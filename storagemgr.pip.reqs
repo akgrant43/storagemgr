@@ -1,0 +1,16 @@
+Cython
+numpy
+pyzmq
+pygments
+tornado
+ipython[zmq,notebook,test]
+mimeparse
+django
+django-extensions
+django-tastypie
+South
+Werkzeug
+pytz
+sphinx
+jinja2
+pandas
