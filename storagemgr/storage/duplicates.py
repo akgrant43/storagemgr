@@ -2,6 +2,7 @@ import os
 import shutil
 import pandas as pd
 from os.path import join
+from copy import copy
 
 from storage.models import Hash, RootPath, RelPath, File
 from storage.models import PathPriority
@@ -9,37 +10,54 @@ from storage.models import PathPriority
 from logger import init_logging
 logger = init_logging(__name__)
 
+MBytes = 1024.0 * 1024.0
 
 class Duplicates(object):
     """Report on duplicate files"""
     
-    def __init__(self):
-        self.data_frame = self._data_frame()
-
-    def _data_frame(self):
-        """Answer the pandas dataframe with all duplicates
+    def __init__(self, *args, **kwargs):
+        hash = pd.DataFrame.from_records(Hash.objects.values('id', 'digest'))
+        self.hash = hash.set_index('id')
+        root_path = pd.DataFrame.from_records(RootPath.objects.values('id', 'path'))
+        self.root_path = root_path.set_index('id')
         
-        Columns:
-        - Hash
-        - Root
-        - Path
-        - File"""
+        ids = []
+        pths = []
+        for path in RelPath.objects.all():
+            ids.append(path.id)
+            pths.append(path.abspath)
+        self.path = pd.DataFrame(pths, index=ids)
 
-        index = ['Hash', 'Root', 'Path', 'File']
-        df = pd.DataFrame(index=index)
-        i = 0
-        for hash in Hash.objects.all():
-            file_set = File.objects.filter(hash=hash, symbolic_link=False)
-            if file_set.count() > 1:
-                for file in file_set.all():
-                    s = pd.Series([hash.digest,
-                                   file.path.root.path,
-                                   file.path.abspath,
-                                   file.name],
-                                  index=df.index)
-                    df[i] = s
-                    i += 1
-        return df.T
+        index = ['id', 'hash', 'path', 'name', 'size', 'mtime',
+                 'symbolic_link', 'deduped', 'deleted']
+        files = pd.DataFrame.from_records(File.objects.values(*index))
+        self.file = files.set_index('id')
+
+    def duplicates(self):
+        """Answer the set of duplicates"""
+        ic = self.file['hash'].value_counts()
+        dups_digest = ic[ic>1]
+        duplicates = copy(self)
+        duplicates.file = self.file.ix[dups_digest.index]
+        return duplicates
+
+    def uniques(self):
+        """Answer the set of uniques"""
+        ic = self.file['hash'].value_counts()
+        dups_digest = ic[ic==1]
+        uniques = copy(self)
+        uniques.file = self.file.ix[dups_digest.index]
+        return uniques
+
+    def for_path(self, path):
+        """Answer the subset of entries matching path"""
+        idx = self.path[0].apply(lambda x: x.startswith(path))
+        paths = self.path[idx]
+        res = copy(self)
+        path_ids = paths.index
+        files_mask = self.file['path'].apply(lambda x: x in path_ids)
+        res.file = self.file[files_mask]
+        return res
 
 
 class Deduplicate(object):
@@ -123,8 +141,10 @@ class Deduplicate(object):
 
         logger.info(u"Deduplicate: Linking {0} to {1}".format(
                     from_file.abspath, to_file.abspath))
-        # Move from_file to /tmp
-        tmp_prefix = '/tmp/storagemgr'
+        assert self.have_tmp_space(), \
+            u"Insufficient free space in {0}".format(settings.TMP_PATH)
+        # Move from_file to TMP_PATH
+        tmp_prefix = join(settings.TMP_PATH, 'storagemgr')
         try:
             tmp_path = tmp_prefix+from_file.path.abspath
             os.makedirs(tmp_path)
@@ -144,3 +164,11 @@ class Deduplicate(object):
         from_file.deduplicated()
 
         return
+
+    def have_tmp_space(self):
+        """Answer a boolean indicating whether there is sufficient free space
+        on the tmp drive to continue deduplication."""
+        
+        stats = os.statvfs(settings.TMP_PATH)
+        free = float(stats.f_bavail) * float(stats.f_frsize) / MBytes
+        return settings.TMP_MIN_SPACE > free

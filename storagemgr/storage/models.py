@@ -29,7 +29,7 @@ class Hash(models.Model):
             return hash
 
     def __unicode__(self):
-        return self.hash
+        return self.digest
 
 
 

@@ -178,3 +178,7 @@ INSTALLED_APPS = (
 )
 
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'
+
+# Specify the location and minimum required space for deduplication backup (MB)
+TMP_PATH = '/tmp'
+TMP_MIN_SPACE = 100 # MB
