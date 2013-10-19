@@ -11,7 +11,7 @@ logger = init_logging(__name__)
 
 
 class Command(BaseCommand):
-    args = ''
+    args = '<root path...>'
     help = 'Scan the managed directories for changes'
     option_list = BaseCommand.option_list + (
         make_option('--debug',
@@ -28,8 +28,10 @@ class Command(BaseCommand):
             pdb.set_trace()
 
         logger.info("Quick Scan starting")
-        scan = QuickScan()
-        scan.scan()
+        for rp in args:
+            scan = QuickScan(rp)
+            print("Scanning: {0}".format(scan.root_paths))
+            scan.scan()
         logger.info("Quick Scan finished")
 
         return
