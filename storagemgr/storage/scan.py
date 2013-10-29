@@ -14,8 +14,10 @@ class Scan(object):
     
     Either FullScan or QuickScan should be instantiated."""
     
-    def __init__(self):
-        self.root_paths = RootPath.objects.all()
+    def __init__(self, rp):
+        self.root_paths = list(RootPath.objects.filter(path__icontains=rp))
+        if len(self.root_paths) == 0:
+            raise Exception("No root paths found from: {0}".format(rp))
 
     def scan(self):
         """Scan each root path in turn and update the database"""
