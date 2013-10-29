@@ -1,7 +1,8 @@
 import os
 import hashlib
+import pyexiv2
 from datetime import datetime
-from os.path import exists, islink, join
+from os.path import exists, islink, join, splitext
 
 from django.db import models
 from django.db.models import Q
@@ -196,6 +197,39 @@ class File(models.Model):
             digest = hasher.hexdigest()
         self.hash = Hash.gethash(digest)
         self.save()
+        self.update_keywords()
+
+    def update_keywords(self):
+        """Update the receivers keywords"""
+        assert self.deleted is None, \
+            u"Can't update deleted file: {0}".format(self.abspath)
+
+        # The file must be accessible
+        assert exists(self.abspath), \
+            u"File not accessible: {0}".format(self.abspath)
+
+        if splitext(self.name)[1] in ['.jpg']:
+            img_exiv2 = pyexiv2.metadata.ImageMetadata(self.abspath)
+            img_exiv2.read()
+            keywords = img_exiv2.get('Iptc.Application2.Keywords')
+            if keywords is not None:
+                keywords = keywords.value
+            else:
+                keywords = []
+            keywords = set(keywords)
+            old_keywords = self.keyword_set.all()
+            # Minimise db lookups by caching in a dictionary
+            oldkwdict = {}
+            for okw in old_keywords:
+                oldkwdict[okw.name] = okw
+            old_keywords = set(oldkwdict.keys())
+            removed = old_keywords - keywords
+            added = keywords - old_keywords
+            for kw in removed:
+                import pdb; pdb.set_trace()
+            for kw in added:
+                Keyword.get_or_add(kw).files.add(self)
+        return
 
     def mark_deleted(self):
         """Mark the receiver as deleted"""
@@ -284,4 +318,26 @@ class PathPriority(models.Model):
 
         # How did we get here?
         raise ValueError("Priority algorithm error")
-        
+
+
+
+class Keyword(models.Model):
+    """Store the keywords associated with a File
+    (typically IPTC Keywords in JPG images)"""
+    
+    name = models.CharField(max_length=4096)
+    files = models.ManyToManyField(File)
+    creation_date = models.DateTimeField(auto_now_add=True)
+    mod_date = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def get_or_add(cls, keyword):
+        try:
+            kw = cls.objects.get(name=keyword)
+        except cls.DoesNotExist:
+            kw = cls(name=keyword)
+            kw.save()
+        return kw
+
+    def __unicode__(self):
+        return self.name

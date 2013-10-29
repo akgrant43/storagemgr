@@ -15,23 +15,11 @@ MBytes = 1024.0 * 1024.0
 class Duplicates(object):
     """Report on duplicate files"""
     
-    def __init__(self, *args, **kwargs):
-        hash = pd.DataFrame.from_records(Hash.objects.values('id', 'digest'))
-        self.hash = hash.set_index('id')
-        root_path = pd.DataFrame.from_records(RootPath.objects.values('id', 'path'))
-        self.root_path = root_path.set_index('id')
-        
-        ids = []
-        pths = []
-        for path in RelPath.objects.all():
-            ids.append(path.id)
-            pths.append(path.abspath)
-        self.path = pd.DataFrame(pths, index=ids)
-
-        index = ['id', 'hash', 'path', 'name', 'size', 'mtime',
-                 'symbolic_link', 'deduped', 'deleted']
-        files = pd.DataFrame.from_records(File.objects.values(*index))
-        self.file = files.set_index('id')
+    def __init__(self):
+        self.hash = None
+        self.root_path = None
+        self.path = None
+        self.file = None
 
     def duplicates(self):
         """Answer the set of duplicates"""
@@ -51,13 +39,56 @@ class Duplicates(object):
 
     def for_path(self, path):
         """Answer the subset of entries matching path"""
-        idx = self.path[0].apply(lambda x: x.startswith(path))
-        paths = self.path[idx]
+        mask = self.path['Path'].apply(lambda x: x.startswith(path))
+        paths = self.path[mask]
         res = copy(self)
         path_ids = paths.index
         files_mask = self.file['path'].apply(lambda x: x in path_ids)
+        res.path = paths
         res.file = self.file[files_mask]
         return res
+
+    def store(self, fn):
+        store = pd.HDFStore(fn)
+        store['file'] = self.file
+        store['path'] = self.path
+        store['root_path'] = self.root_path
+        store['hash'] = self.hash
+        store.close()
+
+    @classmethod
+    def load_from_db(cls, *args, **kwargs):
+        dup = cls()
+        hash = pd.DataFrame.from_records(Hash.objects.values('id', 'digest'))
+        dup.hash = hash.set_index('id')
+        root_path = pd.DataFrame.from_records(RootPath.objects.values('id', 'path'))
+        dup.root_path = root_path.set_index('id')
+        
+        ids = []
+        roots = []
+        pths = []
+        for path in RelPath.objects.all():
+            ids.append(path.id)
+            roots.append(path.root_id)
+            pths.append(path.abspath)
+        dup.path = pd.DataFrame({'Root': roots, 'Path': pths}, index=ids)
+
+        index = ['id', 'hash', 'path', 'name', 'size', 'mtime',
+                 'symbolic_link', 'deduped', 'deleted']
+        files = pd.DataFrame.from_records(File.objects.values(*index))
+        dup.file = files.set_index('id')
+        return dup
+
+    @classmethod
+    def load_from_store(cls, fn):
+        store = pd.HDFStore(fn)
+        dup = cls()
+        dup.hash = store['hash']
+        dup.root_path = store['root_path']
+        dup.path = store['path']
+        dup.file = store['file'] 
+        store.close()
+        return dup
 
 
 class Deduplicate(object):

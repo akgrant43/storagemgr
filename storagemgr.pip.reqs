@@ -13,4 +13,5 @@ Werkzeug
 pytz
 sphinx
 jinja2
+numexpr
 pandas
