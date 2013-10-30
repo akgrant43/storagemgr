@@ -7,6 +7,9 @@ from os.path import exists, islink, join, splitext
 from django.db import models
 from django.db.models import Q
 
+from logger import init_logging
+logger = init_logging(__name__)
+
 # Create your models here.
 
 class Hash(models.Model):
@@ -208,7 +211,7 @@ class File(models.Model):
         assert exists(self.abspath), \
             u"File not accessible: {0}".format(self.abspath)
 
-        if splitext(self.name)[1] in ['.jpg']:
+        if splitext(self.name)[1].lower() in ['.jpg']:
             img_exiv2 = pyexiv2.metadata.ImageMetadata(self.abspath)
             img_exiv2.read()
             keywords = img_exiv2.get('Iptc.Application2.Keywords')
@@ -227,7 +230,9 @@ class File(models.Model):
                 oldkwdict[okw.name] = okw
             old_keywords = set(oldkwdict.keys())
             removed = old_keywords - keywords
+            logger.debug("Removing keywords from {0}: {1}".format(self.name, removed))
             added = keywords - old_keywords
+            logger.debug("Adding keywords from {0}: {1}".format(self.name, added))
             for kw in removed:
                 import pdb; pdb.set_trace()
             for kw in added:
