@@ -33,8 +33,9 @@ class Command(BaseCommand):
         for p in RootPath.objects.all():
             print("    {0}".format(p.path))
         print("\n\n")
-        print("Keywords:")
-        print("=========")
+        keywords = Keyword.objects
+        print("Keywords ({0:3d}):".format(keywords.count()))
+        print("===============")
         for kw in Keyword.objects.all():
             print("    {0}".format(kw.name))
         print("\n\n")
