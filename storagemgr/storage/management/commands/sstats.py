@@ -36,7 +36,9 @@ class Command(BaseCommand):
         keywords = Keyword.objects
         print("Keywords ({0:3d}):".format(keywords.count()))
         print("===============")
-        for kw in Keyword.objects.all():
+        keywords = list(keywords.all())
+        keywords.sort()
+        for kw in keywords:
             print("    {0}".format(kw.name))
         print("\n\n")
         print("File Count: {0}".format(File.objects.count()))
