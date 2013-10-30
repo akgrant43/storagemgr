@@ -36,10 +36,10 @@ class Command(BaseCommand):
         keywords = Keyword.objects
         print("Keywords ({0:3d}):".format(keywords.count()))
         print("===============")
-        keywords = list(keywords.all())
+        keywords = [kw.name for kw in keywords.all()]
         keywords.sort()
         for kw in keywords:
-            print("    {0}".format(kw.name))
+            print("    {0}".format(kw))
         print("\n\n")
         print("File Count: {0}".format(File.objects.count()))
         logger.info("sstats finished")
