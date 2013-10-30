@@ -218,7 +218,7 @@ class File(models.Model):
                 keywords = []
             xmp = img_exiv2.get('Xmp.MicrosoftPhoto.LastKeywordXMP')
             if xmp is not None:
-                keywords.extend(xmp)
+                keywords.extend(xmp.value)
             keywords = set(keywords)
             old_keywords = self.keyword_set.all()
             # Minimise db lookups by caching in a dictionary
