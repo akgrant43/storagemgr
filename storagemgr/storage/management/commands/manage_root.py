@@ -23,11 +23,16 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        command = args[0].lower()
-
         if options['debug']:
             import pdb
             pdb.set_trace()
+
+        if len(args) == 0:
+            # List current roots and exclude dirs
+            self.show(args, options)
+            exit(0)
+
+        command = args[0].lower()
 
         if command not in COMMANDS:
             msg = 'Unknown command: {0}'.format(command)
@@ -70,4 +75,11 @@ class Command(BaseCommand):
         msg = u'Added new excluded directory: {0}'.format(regex)
         print msg
         logger.info(msg)
+        return
+
+    def show(self, args, options):
+        for root in RootPath.objects.all():
+            print(root.path)
+            for dir in ExcludeDir.objects.filter(root_path=root):
+                print("   {0}".format(dir.regex))
         return
