@@ -11,9 +11,9 @@ from collections import deque
 from itertools import cycle
 
 import Tkinter as tk
-
 import Image
 import ImageTk
+from Image import FLIP_LEFT_RIGHT, FLIP_TOP_BOTTOM, ROTATE_90, ROTATE_180, ROTATE_270
 
 psutil = None  # avoid "redefinition of unused 'psutil'" warning
 try:
@@ -23,6 +23,17 @@ except ImportError:
 
 debug = logging.debug
 
+ORIENTATIONS = [
+    None,                           # 0 never used
+    [],                             # 1 no action required
+    [FLIP_LEFT_RIGHT],              # 2
+    [ROTATE_180],                   # 3
+    [FLIP_TOP_BOTTOM],              # 4
+    [ROTATE_270, FLIP_LEFT_RIGHT],  # 5
+    [ROTATE_270],                   # 6
+    [ROTATE_90, FLIP_LEFT_RIGHT],   # 7
+    [ROTATE_90]                     # 8
+]
 
 class Slideshow(object):
     def __init__(self, parent, filenames, slideshow_delay=2, history_size=100):
@@ -49,17 +60,23 @@ class Slideshow(object):
         if self._idx < len(self.filenames):
             self._id = self.imglbl.after(self._delay, self._slideshow)
         else:
-            self.quit()
+            self.imglbl.after(self._delay * 2, self.quit)
         return
 
     def show_image(self):
         filename = self.filenames[self._idx]
         debug("load %r", filename)
         image = Image.open(filename)  # note: let OS manage file cache
+        exif = image._getexif()
+        # Orientation is 274
+        orientation = exif.get(274, 1)
+        # See http://www.daveperrett.com/articles/2012/07/28/exif-orientation-handling-is-a-ghetto/
+        # http://omz-software.com/pythonista/docs/ios/Image.html
+        for action in ORIENTATIONS[orientation]:
+            image = image.transpose(action)
 
         # shrink image inplace to fit in the application window
         w, h = self.ma.winfo_width(), self.ma.winfo_height()
-        print("W: {0}, H: {1}".format(w,h))
         if image.size[0] > w or image.size[1] > h:
             # note: ImageOps.fit() copies image
             # preserve aspect ratio
@@ -69,12 +86,12 @@ class Slideshow(object):
         # note: pasting into an RGBA image that is displayed might be slow
         # create new image instead
         self._photo_image = ImageTk.PhotoImage(image)
-        self.imglbl.configure(image=self._photo_image)
+        self.imglbl.configure(background='black', image=self._photo_image)
 
         # set application window title
         self.ma.wm_title(filename)
 
-    def quit(self):
+    def quit(self, event_unused=None):
         self._parent.destroy()
 
     def _show_image_on_next_tick(self, cancel=True):
@@ -90,7 +107,7 @@ class Slideshow(object):
         self._show_image_on_next_tick()
 
     def prev_image(self, event_unused=None):
-        if self._idx >= len(self.filenames):
+        if self._idx == 0:
             return
         self._idx -= 1
         self._show_image_on_next_tick()
