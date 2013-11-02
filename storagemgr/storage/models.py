@@ -118,11 +118,27 @@ class ExcludeDir(models.Model):
             rp = "Global"
         return u"{0} ({1})".format(self.regex, rp)
 
+
+
+class MetadataField(models.Model):
+    """All the supported metadata fields."""
+    name = models.CharField(max_length=4096)
+    description = models.TextField(blank=True)
+    creation_date = models.DateTimeField(auto_now_add=True)
+    mod_date = models.DateTimeField(auto_now=True)
+
+    def __unicode__(self):
+        return self.name
+
+
+
 class File(models.Model):
     """Store file details
 
     :param size:          derived from os.stat
     :param mtime:         derived from os.stat
+    :param date:          E.g. image creation date
+    :param date_field:    The source of date
     :param symbolic_link: True if this is a symbolic link
     :param deduped:       True if this link was created during deduplication
     :param deleted:       The date the file was noticed as deleted.
@@ -141,9 +157,12 @@ class File(models.Model):
     hash = models.ForeignKey(Hash)
     size = models.BigIntegerField()
     mtime = models.FloatField()
+    date = models.DateTimeField(null=True)
+    date_field = models.ForeignKey(MetadataField, null=True)
     symbolic_link = models.BooleanField(default=False)
     deduped = models.BooleanField(default=False)
     deleted = models.DateTimeField(null=True, blank=True)
+    # DB metadata
     creation_date = models.DateTimeField(auto_now_add=True)
     mod_date = models.DateTimeField(auto_now=True)
 
@@ -199,11 +218,14 @@ class File(models.Model):
                     hasher.update(buf)
             digest = hasher.hexdigest()
         self.hash = Hash.gethash(digest)
+        if self.pk is None:
+            # We need to save for the many-to-many relationships
+            self.save()
+        self._update_exif()
         self.save()
-        self.update_keywords()
 
-    def update_keywords(self):
-        """Update the receivers keywords"""
+    def update_exif(self):
+        """Update the receivers EXIF metadata."""
         assert self.deleted is None, \
             u"Can't update deleted file: {0}".format(self.abspath)
 
@@ -211,9 +233,19 @@ class File(models.Model):
         assert exists(self.abspath), \
             u"File not accessible: {0}".format(self.abspath)
 
+        self._update_exif()
+        self.save()
+
+    def _update_exif(self):
+        """Update the receivers EXIF metadata.
+        Note that this doesn't save the changes to the receiver."""
         if splitext(self.name)[1].lower() in ['.jpg']:
             img_exiv2 = pyexiv2.metadata.ImageMetadata(self.abspath)
             img_exiv2.read()
+
+            #
+            # Keywords
+            #
             keywords = img_exiv2.get('Iptc.Application2.Keywords')
             if keywords is not None:
                 keywords = keywords.value
@@ -234,9 +266,31 @@ class File(models.Model):
             added = keywords - old_keywords
             logger.debug("Adding keywords from {0}: {1}".format(self.name, added))
             for kw in removed:
-                import pdb; pdb.set_trace()
+                self.keyword_set.filter(name=kw)[0].files.remove(self)
             for kw in added:
                 Keyword.get_or_add(kw).files.add(self)
+
+            #
+            # Date / Times
+            #
+            dt = img_exiv2.get('Exif.Photo.DateTimeDigitized', None)
+            if dt is not None:
+                # Side affect of adding to FileDate is to convert to datetime
+                dt, field = FileDate.add(self, 'Exif.Photo.DateTimeDigitized', dt.value)
+                self.date = dt
+                self.date_field = field
+            dt = img_exiv2.get('Exif.Photo.DateTimeOriginal', None)
+            if dt is not None:
+                # Side affect of adding to FileDate is to convert to datetime
+                dt, field = FileDate.add(self, 'Exif.Photo.DateTimeOriginal', dt.value)
+                self.date = dt
+                self.date_field = field
+            dt = img_exiv2.get('Exif.Image.DateTime', None)
+            if dt is not None:
+                # Side affect of adding to FileDate is to convert to datetime
+                dt, field = FileDate.add(self, 'Exif.Image.DateTime', dt.value)
+                self.date = dt
+                self.date_field = field
         return
 
     def mark_deleted(self):
@@ -331,7 +385,8 @@ class PathPriority(models.Model):
 
 class Keyword(models.Model):
     """Store the keywords associated with a File
-    (typically IPTC Keywords in JPG images)"""
+    (typically IPTC Keywords or Xmp.MicrosoftPhoto.LastKeywordXMP
+    in JPG images)"""
     
     name = models.CharField(max_length=4096)
     files = models.ManyToManyField(File)
@@ -349,3 +404,32 @@ class Keyword(models.Model):
 
     def __unicode__(self):
         return self.name
+
+
+
+class FileDate(models.Model):
+    """Store a date associated with a file.
+    
+    The field definition is stored in MetadataField."""
+    
+    file = models.ForeignKey(File)
+    field = models.ForeignKey(MetadataField)
+    date = models.DateTimeField()
+    creation_date = models.DateTimeField(auto_now_add=True)
+    mod_date = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def add(cls, file, fieldname, date):
+        field = MetadataField.objects.get(name=fieldname)
+        try:
+            fd = cls.objects.get(file=file, field=field)
+        except:
+            fd = cls(file=file, field=field)
+        if isinstance(date, basestring):
+            new_date = datetime.strptime(date_string, "%Y:%m:%d %H:%M:%S")
+        else:
+            new_date = date
+        if fd.date != new_date:
+            fd.date = new_date
+            fd.save()
+        return new_date, field

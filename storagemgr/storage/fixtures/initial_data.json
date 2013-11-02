@@ -1,0 +1,32 @@
+[
+    {
+        "fields": {
+            "creation_date": "2013-11-02T11:52:34.380",
+            "description": "",
+            "mod_date": "2013-11-02T11:52:34.380",
+            "name": "Exif.Image.DateTime"
+        },
+        "model": "storage.metadatafield",
+        "pk": 1
+    },
+    {
+        "fields": {
+            "creation_date": "2013-11-02T11:57:58.645",
+            "description": "",
+            "mod_date": "2013-11-02T11:57:58.645",
+            "name": "Exif.Photo.DateTimeOriginal"
+        },
+        "model": "storage.metadatafield",
+        "pk": 2
+    },
+    {
+        "fields": {
+            "creation_date": "2013-11-02T11:58:11.890",
+            "description": "",
+            "mod_date": "2013-11-02T11:58:11.890",
+            "name": "Exif.Photo.DateTimeDigitized"
+        },
+        "model": "storage.metadatafield",
+        "pk": 3
+    }
+]

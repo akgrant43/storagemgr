@@ -35,6 +35,11 @@ class Command(BaseCommand):
             dest='debug',
             default=False,
             help='Load pdb and halt on startup'),
+        make_option('--nosort',
+            action='store_true',
+            dest='nosort',
+            default=False,
+            help="Don't sort the slides by date"),
         )
 
     def handle(self, *args, **options):
@@ -48,6 +53,8 @@ class Command(BaseCommand):
         files = File.objects
         for kw in args:
             files = files.filter(keyword__name__exact=kw)
+        if not options['nosort']:
+            files = files.order_by('date')
         image_filenames = [f.abspath for f in files.all()]
         Slideshow.fullscreen(image_filenames)
         logger.info("Slideshow finished")
