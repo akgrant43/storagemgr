@@ -59,6 +59,7 @@ class Slideshow(object):
         self._idx += 1
         if self._idx < len(self.filenames):
             self._id = self.imglbl.after(self._delay, self._slideshow)
+
         else:
             self.imglbl.after(self._delay * 2, self.quit)
         return
@@ -72,8 +73,9 @@ class Slideshow(object):
         orientation = exif.get(274, 1)
         # See http://www.daveperrett.com/articles/2012/07/28/exif-orientation-handling-is-a-ghetto/
         # http://omz-software.com/pythonista/docs/ios/Image.html
-        for action in ORIENTATIONS[orientation]:
-            image = image.transpose(action)
+        if orientation >= 2 and orientation <= 8:
+            for action in ORIENTATIONS[orientation]:
+                image = image.transpose(action)
 
         # shrink image inplace to fit in the application window
         w, h = self.ma.winfo_width(), self.ma.winfo_height()
