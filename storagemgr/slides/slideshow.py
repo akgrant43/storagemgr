@@ -1,7 +1,15 @@
 #!/usr/bin/env python
-"""Show slideshow for images in a given directory (recursively) in cycle.
+"""Slideshow displays the supplied list of files.
 
-If no directory is specified, it uses the current directory.
+Originally based on: https://gist.github.com/zed/8b05c3ea0302f0e2c14c/ (thanks to zed on github)
+
+Changes include:
+
+* Use black background
+* Use full screen by default
+* Handle EXIF Orientation data
+* Only run through images once (default)
+* Up and Down keys lengthen and shorten the display time
 """
 import logging
 import os
@@ -15,11 +23,11 @@ import Image
 import ImageTk
 from Image import FLIP_LEFT_RIGHT, FLIP_TOP_BOTTOM, ROTATE_90, ROTATE_180, ROTATE_270
 
-psutil = None  # avoid "redefinition of unused 'psutil'" warning
-try:
-    import psutil
-except ImportError:
-    pass
+#psutil = None  # avoid "redefinition of unused 'psutil'" warning
+#try:
+    #import psutil
+#except ImportError:
+    #pass
 
 debug = logging.debug
 
@@ -39,7 +47,7 @@ class Slideshow(object):
     def __init__(self, parent, filenames, slideshow_delay=2, history_size=100):
         self._parent = parent
         self.ma = parent.winfo_toplevel()
-        self.filenames = filenames  # loop forever
+        self.filenames = filenames
         self._photo_image = None  # must hold reference to PhotoImage
         self._id = None  # used to cancel pending show_image() callbacks
         self.imglbl = tk.Label(parent)  # it contains current image
@@ -71,8 +79,9 @@ class Slideshow(object):
         exif = image._getexif()
         # Orientation is 274
         orientation = exif.get(274, 1)
-        # See http://www.daveperrett.com/articles/2012/07/28/exif-orientation-handling-is-a-ghetto/
-        # http://omz-software.com/pythonista/docs/ios/Image.html
+        # See:
+        # - http://www.daveperrett.com/articles/2012/07/28/exif-orientation-handling-is-a-ghetto/
+        # - http://omz-software.com/pythonista/docs/ios/Image.html
         if orientation >= 2 and orientation <= 8:
             for action in ORIENTATIONS[orientation]:
                 image = image.transpose(action)
