@@ -279,22 +279,31 @@ class File(models.Model):
             #
             dt = img_exiv2.get('Exif.Photo.DateTimeDigitized', None)
             if dt is not None:
-                # Side affect of adding to FileDate is to convert to datetime
-                dt, field = FileDate.add(self, 'Exif.Photo.DateTimeDigitized', dt.value)
-                self.date = dt
-                self.date_field = field
+                try:
+                    # Side affect of adding to FileDate is to convert to datetime
+                    dt, field = FileDate.add(self, 'Exif.Photo.DateTimeDigitized', dt.value)
+                    self.date = dt
+                    self.date_field = field
+                except ValueError as ve:
+                    logger.warn("{0} no date: {1}".format(self.abspath, str(ve)))
             dt = img_exiv2.get('Exif.Photo.DateTimeOriginal', None)
             if dt is not None:
-                # Side affect of adding to FileDate is to convert to datetime
-                dt, field = FileDate.add(self, 'Exif.Photo.DateTimeOriginal', dt.value)
-                self.date = dt
-                self.date_field = field
+                try:
+                    # Side affect of adding to FileDate is to convert to datetime
+                    dt, field = FileDate.add(self, 'Exif.Photo.DateTimeOriginal', dt.value)
+                    self.date = dt
+                    self.date_field = field
+                except ValueError as ve:
+                    logger.warn("{0} no date: {1}".format(self.abspath, str(ve)))
             dt = img_exiv2.get('Exif.Image.DateTime', None)
             if dt is not None:
-                # Side affect of adding to FileDate is to convert to datetime
-                dt, field = FileDate.add(self, 'Exif.Image.DateTime', dt.value)
-                self.date = dt
-                self.date_field = field
+                try:
+                    # Side affect of adding to FileDate is to convert to datetime
+                    dt, field = FileDate.add(self, 'Exif.Image.DateTime', dt.value)
+                    self.date = dt
+                    self.date_field = field
+                except ValueError as ve:
+                    logger.warn("{0} no date: {1}".format(self.abspath, str(ve)))
         return
 
     def mark_deleted(self):
