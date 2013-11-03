@@ -240,8 +240,11 @@ class File(models.Model):
         """Update the receivers EXIF metadata.
         Note that this doesn't save the changes to the receiver."""
         if splitext(self.name)[1].lower() in ['.jpg']:
-            img_exiv2 = pyexiv2.metadata.ImageMetadata(self.abspath)
-            img_exiv2.read()
+            try:
+                img_exiv2 = pyexiv2.metadata.ImageMetadata(self.abspath)
+                img_exiv2.read()
+            except IOError:
+                return
 
             #
             # Keywords
