@@ -244,6 +244,7 @@ class File(models.Model):
                 img_exiv2 = pyexiv2.metadata.ImageMetadata(self.abspath)
                 img_exiv2.read()
             except IOError:
+                logger.warn("Unable to read metadata from: {0}".format(self.abspath))
                 return
 
             #
@@ -429,7 +430,7 @@ class FileDate(models.Model):
         except:
             fd = cls(file=file, field=field)
         if isinstance(date, basestring):
-            new_date = datetime.strptime(date_string, "%Y:%m:%d %H:%M:%S")
+            new_date = datetime.strptime(date, "%Y:%m:%d %H:%M:%S")
         else:
             new_date = date
         if fd.date != new_date:
