@@ -5,6 +5,8 @@ from os.path import join
 
 PROJECT_PATH = abspath(os.path.split(__file__)[0])
 PROJECT_DIR = os.path.dirname(PROJECT_PATH)
+DB_PATH = os.environ.get('STORAGEMGR_DB_PATH',
+                        '/mnt/daa/data1/akg/storagemgr')
 
 LOGGING = {
     'version': 1,
@@ -60,7 +62,7 @@ MANAGERS = ADMINS
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3', # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
-        'NAME': join(PROJECT_PATH, 'storagemgr.db'),                      # Or path to database file if using sqlite3.
+        'NAME': join(DB_PATH, 'storagemgr.db'),                      # Or path to database file if using sqlite3.
         'USER': '',                      # Not used with sqlite3.
         'PASSWORD': '',                  # Not used with sqlite3.
         'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
