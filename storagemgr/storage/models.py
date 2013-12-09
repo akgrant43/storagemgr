@@ -154,7 +154,8 @@ class File(models.Model):
 
     name = models.CharField(max_length=4096)
     path = models.ForeignKey(RelPath)
-    hash = models.ForeignKey(Hash)
+    hash = models.ForeignKey(Hash, related_name="hash")
+    original_hash = models.ForeignKey(Hash, related_name="original_hash")
     size = models.BigIntegerField()
     mtime = models.FloatField()
     date = models.DateTimeField(null=True)
@@ -218,6 +219,8 @@ class File(models.Model):
                     hasher.update(buf)
             digest = hasher.hexdigest()
         self.hash = Hash.gethash(digest)
+        if self.original_hash_id is None:
+            self.original_hash = self.hash
         if self.pk is None:
             # We need to save for the many-to-many relationships
             self.save()
