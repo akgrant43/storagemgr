@@ -42,7 +42,8 @@ class RootPath(models.Model):
     
     The root path must always be stored as an absolute path."""
 
-    path = models.CharField(max_length=4096, unique=True)
+    # path should be unique, but MySQL doesn't allow unique with max_length>255
+    path = models.CharField(max_length=255, unique=True)
     creation_date = models.DateTimeField(auto_now_add=True)
     mod_date = models.DateTimeField(auto_now=True)
 
@@ -56,7 +57,7 @@ class RootPath(models.Model):
 
 class RelPath(models.Model):
     """Store the relative path from root to file"""
-    path = models.CharField(max_length=4096, blank=True)
+    path = models.CharField(max_length=255, blank=True)
     root = models.ForeignKey(RootPath)
     creation_date = models.DateTimeField(auto_now_add=True)
     mod_date = models.DateTimeField(auto_now=True)
@@ -105,7 +106,7 @@ class ExcludeDir(models.Model):
     """Each record is a regular expression that will be applied to the selected
     RootDir, or all directories."""
     
-    regex = models.CharField(max_length=4096)
+    regex = models.CharField(max_length=255)
     root_path = models.ForeignKey(RootPath, null=True)
 
     class Meta:
