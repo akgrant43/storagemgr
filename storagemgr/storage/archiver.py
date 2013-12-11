@@ -31,7 +31,7 @@ class Archiver(object):
         return
 
     def archive(self):
-        logger.debug("Archiving from {0} to {1}".format(
+        logger.info("Archiving from {0} to {1}".format(
             self.source, self.destination))
         for root, folders, filenames in walk(self.source):
             self.archive_files(filenames, root)
@@ -58,6 +58,8 @@ class Archiver(object):
                             fn,
                             new_file.name,
                             new_file.hash.digest))
+            else:
+                logger.info("skipped {0}".format(fn))
         return
 
     def date(self, fnpath):
