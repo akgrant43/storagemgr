@@ -195,3 +195,6 @@ SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'
 # Specify the location and minimum required space for deduplication backup (MB)
 TMP_PATH = '/tmp'
 TMP_MIN_SPACE = 100 # MB
+
+IMAGES_ARCHIVE = '/mnt/daa/data1/Photos'
+VIDEO_ARCHIVE = '/mnt/daa/data1/Photos'

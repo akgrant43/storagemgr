@@ -47,6 +47,21 @@ class RootPath(models.Model):
     creation_date = models.DateTimeField(auto_now_add=True)
     mod_date = models.DateTimeField(auto_now=True)
 
+    @classmethod
+    def getrootpath(cls, path, create=True):
+        """Answer an instance of the receiver for the supplied path.
+        Create if necessary and allowed."""
+        # For now use a simple brute force search
+        # The number of root paths is expected to be small,
+        # so this won't be a huge issue
+        root_path = None
+        roots = cls.objects.all()
+        for root in roots:
+            if path.startswith(root.path):
+                root_path = root
+                break
+        return root_path
+
     @property
     def abspath(self):
         return self.path
@@ -66,19 +81,12 @@ class RelPath(models.Model):
         unique_together = ("path", "root")
 
     @classmethod
-    def getrelpath(cls, path, root_path=None):
+    def getrelpath(cls, path, root_path=None, create=True):
         """Answer an instance of the receiver for the supplied path.
-        Create if necessary.
+        Create if necessary and allowed.
         If the root_path of the path is known it will speed things up."""
         if root_path is None:
-            # For now use a simple brute force search
-            # The number of root paths is expected to be small,
-            # so this won't be a huge issue
-            roots = RootPath.objects.all()
-            for root in roots:
-                if path.startswith(root):
-                    root_path = root
-                    break
+            root_path = RootPath.getrootpath(path)
         assert root_path is not None, "Requested RelPath has no Root"
         if len(path) > len(root_path.path):
             rel_path_str = path[len(root_path.path)+1:]
@@ -88,8 +96,11 @@ class RelPath(models.Model):
                                            path=rel_path_str)
         assert len(rel_paths) <= 1, "Found more than one RelPath with same name"
         if len(rel_paths) == 0:
-            rel_path = RelPath(root=root_path, path=rel_path_str)
-            rel_path.save()
+            if create:
+                rel_path = RelPath(root=root_path, path=rel_path_str)
+                rel_path.save()
+            else:
+                raise ValueError("RelPath not found: {0}".format(path))
         else:
             rel_path = rel_paths[0]
         return rel_path
@@ -193,7 +204,7 @@ class File(models.Model):
                 self.size != stats.st_size
         return res
 
-    def update_details(self):
+    def get_details(self):
         """Update the details of the receiver (excluding path and name)"""
         # We don't expect to update the details of deleted files
         assert self.deleted is None, \
@@ -222,6 +233,10 @@ class File(models.Model):
         self.hash = Hash.gethash(digest)
         if self.original_hash_id is None:
             self.original_hash = self.hash
+        return
+
+    def update_details(self):
+        self.get_details()
         if self.pk is None:
             # We need to save for the many-to-many relationships
             self.save()
