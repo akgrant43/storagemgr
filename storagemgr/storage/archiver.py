@@ -125,7 +125,7 @@ class ImageArchiver(Archiver):
     """Archive image files from the supplied hierarchy"""
 
     def __init__(self, source, destination, descend=True):
-        self.image_types = ['.jpg', '.jpeg', '.tif', '.tiff', '.raw']
+        self.image_types = ['.jpg', '.jpeg', '.tif', '.tiff', '.raw', '.png']
         super(ImageArchiver, self).__init__(source, destination, descend)
         return
 
@@ -163,8 +163,58 @@ class ImageArchiver(Archiver):
         return fdate
 
     def new_fn(self, full_path, fdate, filename):
-        """Answer the file format: IMG-YYYYMMDD-HHMM.type"""
+        """Answer the file format: IMG-YYYYMMDD-HHMM-u.type"""
         ftype = splitext(filename)[1].lower()
         newname = "IMG-" + fdate.strftime("%Y%m%d-%H%M%S-") + \
+                    str(fdate.microsecond) + ftype
+        return newname
+
+
+
+class VideoArchiver(Archiver):
+    """Archive video files from the supplied hierarchy"""
+
+    def __init__(self, source, destination, descend=True):
+        self.image_types = ['.mov', '.mpg', '.mp4', '.m4v', '.mpeg']
+        super(ImageArchiver, self).__init__(source, destination, descend)
+        return
+
+    def archive_file(self, path):
+        ftype = splitext(path)[1].lower()
+        if ftype not in self.image_types:
+            logger.info("Skipping non-image type: {0}".format(path))
+            return False
+        return super(ImageArchiver, self).archive_file(path)
+
+    def date(self, fnpath):
+        """Answer the date for the supplied filename.
+        Use the video metadata if available, otherwise the default."""
+        fdate = None
+        try:
+            metadata = pyexiv2.ImageMetadata(fnpath)
+            metadata.read()
+            if 'Exif.Photo.DateTimeOriginal' in metadata.exif_keys:
+                fdate = metadata['Exif.Photo.DateTimeOriginal'].value
+            elif 'Exif.Image.DateTime' in metadata.exif_keys:
+                fdate = metadata['Exif.Image.DateTime'].value
+            # The image can contain an invalid value, in which case the
+            # date will come back as a string - which we don't know
+            # what to do with, so make None again
+            if not isinstance(fdate, datetime):
+                fdate = None
+        except IOError as e:
+            # If it isn't a recognised format, don't worry...
+            msg = "pyexiv2 exception on {0}, ignoring, e={1}".format(
+                    fnpath, e)
+            logger.warn(msg)
+            pass
+        if fdate is None:
+            fdate = super(ImageArchiver, self).date(fnpath)
+        return fdate
+
+    def new_fn(self, full_path, fdate, filename):
+        """Answer the file format: VID-YYYYMMDD-HHMM-u.type"""
+        ftype = splitext(filename)[1].lower()
+        newname = "VID-" + fdate.strftime("%Y%m%d-%H%M%S-") + \
                     str(fdate.microsecond) + ftype
         return newname

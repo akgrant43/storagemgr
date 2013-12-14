@@ -1,10 +1,9 @@
 import os
 import re
-from os.path import islink
 
 from django.db.models import Q
 
-from storage.models import Hash, RootPath, RelPath, File, ExcludeDir
+from storage.models import RootPath, RelPath, File, ExcludeDir
 
 from logger import init_logging
 logger = init_logging(__name__)
@@ -14,8 +13,11 @@ class Scan(object):
     
     Either FullScan or QuickScan should be instantiated."""
     
-    def __init__(self, rp):
-        self.root_paths = list(RootPath.objects.filter(path__icontains=rp))
+    def __init__(self, rp=None):
+        if rp is None:
+            self.root_paths = list(RootPath.objects.all())
+        else:
+            self.root_paths = list(RootPath.objects.filter(path__icontains=rp))
         if len(self.root_paths) == 0:
             raise Exception("No root paths found from: {0}".format(rp))
 
