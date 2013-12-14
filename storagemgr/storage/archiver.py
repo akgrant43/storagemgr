@@ -52,6 +52,10 @@ class Archiver(object):
                     makedirs(relpath.abspath)
                 newfn = self.avoid_clash(newfn, relpath)
                 new_file = File(path=relpath, name=newfn)
+                if isfile(new_file.abspath):
+                    # This should never happen
+                    raise ValueException("destination already exists: {0}".format(
+                        new_file))
                 shutil.copy2(fn, new_file.abspath)
                 new_file.update_details()
                 logger.info("added {0} as {1} ({2})".format(

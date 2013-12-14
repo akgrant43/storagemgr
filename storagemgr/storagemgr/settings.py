@@ -26,7 +26,7 @@ LOGGING = {
             'level': 'DEBUG',
             'class': 'logging.handlers.RotatingFileHandler',
             'formatter': 'verbose',
-            'filename': '/run/shm/storagemgr.log',
+            'filename': join(PROJECT_DIR, 'storagemgr.log'),
             'maxBytes': 10000000,
             'backupCount': 5
             },
