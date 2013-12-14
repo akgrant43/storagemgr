@@ -82,14 +82,23 @@ class Archiver(object):
         # Get the digest of the candidate file
         hasher = hashlib.sha256()
         read_size = hasher.block_size * 1024
-        with open(path, 'rb') as fp:
-            while True:
-                buf = fp.read(read_size)
-                if len(buf) == 0:
-                    break  
-                hasher.update(buf)
-        digest = hasher.hexdigest()
+        try:
+            with open(path, 'rb') as fp:
+                while True:
+                    buf = fp.read(read_size)
+                    if len(buf) == 0:
+                        break  
+                    hasher.update(buf)
+            digest = hasher.hexdigest()
+        except IOError as e:
+            msg = "Unable to hash {0}, e={1}.  Ignoring.".format(
+                path, e)
+            logger.error(msg)
+            digest = None
 
+        if digest is None:
+            # Failed to hash, which means the file is corrupt, skip it
+            return False
         # If the file has been previously archived, don't add it now
         hashes = Hash.objects.filter(digest=digest).count()
         return hashes == 0
