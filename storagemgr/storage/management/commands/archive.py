@@ -4,7 +4,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from optparse import make_option
 
-from storage.archiver import Archiver, ImageArchiver
+from storage.archiver import VideoArchiver, ImageArchiver
 
 from logger import init_logging
 logger = init_logging(__name__)
@@ -57,6 +57,11 @@ class Command(BaseCommand):
         if options['images'] or options['media']:
             dest = settings.IMAGES_ARCHIVE
             archiver = ImageArchiver(args[0], dest)
+            archiver.archive()
+
+        if options['videos'] or options['media']:
+            dest = settings.IMAGES_ARCHIVE
+            archiver = VideoArchiver(args[0], dest)
             archiver.archive()
 
         logger.info("Archive finished")
