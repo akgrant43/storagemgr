@@ -54,7 +54,7 @@ class Archiver(object):
                 new_file = File(path=relpath, name=newfn)
                 if isfile(new_file.abspath):
                     # This should never happen
-                    raise ValueException("destination already exists: {0}".format(
+                    raise ValueError("destination already exists: {0}".format(
                         new_file))
                 shutil.copy2(fn, new_file.abspath)
                 new_file.update_details()

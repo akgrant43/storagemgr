@@ -2,7 +2,7 @@
 Test the archiver functionality.
 """
 from shutil import copy2, rmtree
-from os.path import isdir, join
+from os.path import isdir, isfile, join
 from os import makedirs, remove
 
 from django.conf import settings
@@ -123,4 +123,20 @@ class ArchiveTests(TestCase):
         i3 = File.objects.get(name='IMG-20131214-084900-0.png')
         i4 = File.objects.get(name='IMG-20131214-084900-0-1.png')
         self.assertEqual(i3.date, i4.date)
+        return
+
+
+    def test_no_overwrite(self):
+        """Check:
+        1. The system doesn't overwrite a file with the target name.
+        """
+        dest_dir = join(self.rootdir, "2013", "12Dec") 
+        makedirs(dest_dir)
+        copy2(join(self.test_data, "archive1", "image3.png"),
+              join(dest_dir, "IMG-20131214-084900-0.png"))
+        archive1 = join(self.test_data, "archive1")
+        archiver = ImageArchiver(archive1, self.rootdir)
+        archiver.archive()
+        self.assertTrue(isfile(join(dest_dir, "IMG-20131214-084900-0-1.png")),
+                        "Didn't find IMG-20131214-084900-0-1.png")
         return
