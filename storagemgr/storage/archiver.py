@@ -13,11 +13,17 @@ import pyexiv2
 from os import walk, makedirs
 from os.path import join, splitext, getmtime, isdir, isfile
 from datetime import datetime
+from hachoir_parser import createParser
+from hachoir_metadata import extractMetadata
 
 from storage.models import Hash, RootPath, RelPath, File
 
 from logger import init_logging
 logger = init_logging(__name__)
+
+class UnknownFormat(Exception):
+    pass
+
 
 class Archiver(object):
     """Archive the supplied directory"""
@@ -105,6 +111,8 @@ class Archiver(object):
             return False
         # If the file has been previously archived, don't add it now
         hashes = Hash.objects.filter(digest=digest).count()
+        if hashes > 0:
+            logger.debug("Hash of {0} already exists".format(path))
         return hashes == 0
 
     def avoid_clash(self, filename, relpath):
@@ -180,40 +188,38 @@ class VideoArchiver(Archiver):
 
     def __init__(self, source, destination, descend=True):
         self.image_types = ['.mov', '.mpg', '.mp4', '.m4v', '.mpeg']
-        super(ImageArchiver, self).__init__(source, destination, descend)
+        super(VideoArchiver, self).__init__(source, destination, descend)
         return
 
     def archive_file(self, path):
         ftype = splitext(path)[1].lower()
         if ftype not in self.image_types:
-            logger.info("Skipping non-image type: {0}".format(path))
+            logger.info("Skipping non-video type: {0}".format(path))
             return False
-        return super(ImageArchiver, self).archive_file(path)
+        return super(VideoArchiver, self).archive_file(path)
 
     def date(self, fnpath):
         """Answer the date for the supplied filename.
         Use the video metadata if available, otherwise the default."""
         fdate = None
         try:
-            metadata = pyexiv2.ImageMetadata(fnpath)
-            metadata.read()
-            if 'Exif.Photo.DateTimeOriginal' in metadata.exif_keys:
-                fdate = metadata['Exif.Photo.DateTimeOriginal'].value
-            elif 'Exif.Image.DateTime' in metadata.exif_keys:
-                fdate = metadata['Exif.Image.DateTime'].value
-            # The image can contain an invalid value, in which case the
-            # date will come back as a string - which we don't know
-            # what to do with, so make None again
-            if not isinstance(fdate, datetime):
+            ufnpath = unicode(fnpath, 'utf-8')
+            parser = createParser(ufnpath)
+            if parser is None:
+                raise UnknownFormat("Can't parse {0}".format(fnpath))
+            metadata = extractMetadata(parser, 0.0)
+            fdate = metadata.get('creation_date')
+            if fdate.year < 1972:
+                # It isn't valid
                 fdate = None
-        except IOError as e:
+        except (ValueError, IOError, AttributeError, UnknownFormat) as e:
             # If it isn't a recognised format, don't worry...
-            msg = "pyexiv2 exception on {0}, ignoring, e={1}".format(
+            msg = "hachoir exception on {0}, ignoring, e={1}".format(
                     fnpath, e)
             logger.warn(msg)
             pass
         if fdate is None:
-            fdate = super(ImageArchiver, self).date(fnpath)
+            fdate = super(VideoArchiver, self).date(fnpath)
         return fdate
 
     def new_fn(self, full_path, fdate, filename):

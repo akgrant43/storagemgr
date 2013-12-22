@@ -2,18 +2,19 @@
 Test the archiver functionality.
 """
 from shutil import copy2, rmtree
-from os.path import isdir, isfile, join
+from os.path import isdir, isfile, join, getmtime
 from os import makedirs, remove
+from datetime import datetime
 
 from django.conf import settings
 from django.test import TestCase
 
-from storage.models import RootPath, RelPath, File, Hash
+from storage.models import RootPath, File, Hash
 from storage.scan import QuickScan
 from storage.archiver import ImageArchiver, VideoArchiver
 
 
-class ArchiveTests(TestCase):
+class ImageArchiveTests(TestCase):
 
     def setUp(self):
         # Get tmp directory
@@ -139,4 +140,60 @@ class ArchiveTests(TestCase):
         archiver.archive()
         self.assertTrue(isfile(join(dest_dir, "IMG-20131214-084900-0-1.png")),
                         "Didn't find IMG-20131214-084900-0-1.png")
+        return
+
+
+
+class VideoArchiveTests(TestCase):
+
+    def setUp(self):
+        # Get tmp directory
+        tmpdirs = ['/run/shm', '/tmp']
+        self.tmpdir = None
+        for d in tmpdirs:
+            if isdir(d):
+                self.tmpdir = d
+                break
+        self.assertNotEqual(self.tmpdir, None, 
+            msg="Unable to find temporary directory")
+        
+        # Create initial directories to manage
+        self.rootdir = join(self.tmpdir, 'storagemgr_tests')
+        if isdir(self.rootdir):
+            # Delete the directory and start again
+            rmtree(self.rootdir)
+        makedirs(self.rootdir)
+        self.test_data = join(settings.PROJECT_DIR, 'storage', 'test_data')
+
+        # Copy initial files in
+        self.image1_src = join(self.test_data, "image1.png")
+        copy2(self.image1_src, self.rootdir)
+        self.image1 = join(self.rootdir, "image1.png")
+
+        # Initial DB population
+        self.rootpath = RootPath(path=self.rootdir)
+        self.rootpath.save()
+        scanner = QuickScan()
+        scanner.scan()
+
+        return
+
+    def test_initial_archive(self):
+        """Archive the first test directory and ensure file is added"""
+        archive1 = join(self.test_data, "archive1")
+        archiver = VideoArchiver(archive1, self.rootdir)
+        archiver.archive()
+        self.assertEqual(File.objects.count(), 2)
+        #
+        # The test video doesn't have any metadata, derive the filename
+        # from the modification date
+        #
+        mtime = getmtime(join(archive1, "video1.mp4"))
+        fdate = datetime.fromtimestamp(mtime)
+        newname = "VID-" + fdate.strftime("%Y%m%d-%H%M%S-") + \
+                    str(fdate.microsecond) + ".mp4"
+
+        v1 = File.objects.get(name=newname)
+        self.assertEqual(v1.hash.digest,
+            'fdbc165cb15f5d94679d11cd9e264816d78f6560cda2b575b838b2a95be12185')
         return
