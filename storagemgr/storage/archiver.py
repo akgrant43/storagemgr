@@ -69,7 +69,7 @@ class Archiver(object):
                             new_file.name,
                             new_file.hash.digest))
             else:
-                logger.info("skipped {0}".format(fn))
+                logger.debug("skipped {0}".format(fn))
         return
 
     def date(self, fnpath):
@@ -88,8 +88,9 @@ class Archiver(object):
         """Answer a boolean indicating whether the supplied file should 
         be archived.
         Don't archive if there is at least one file with the same hash."""
-        
+
         # Get the digest of the candidate file
+        logger.debug("Get digest for {0}".format(path))
         hasher = hashlib.sha256()
         read_size = hasher.block_size * 1024
         try:
@@ -144,7 +145,7 @@ class ImageArchiver(Archiver):
     def archive_file(self, path):
         ftype = splitext(path)[1].lower()
         if ftype not in self.image_types:
-            logger.info("Skipping non-image type: {0}".format(path))
+            logger.debug("Skipping non-image type: {0}".format(path))
             return False
         return super(ImageArchiver, self).archive_file(path)
 
@@ -187,14 +188,14 @@ class VideoArchiver(Archiver):
     """Archive video files from the supplied hierarchy"""
 
     def __init__(self, source, destination, descend=True):
-        self.image_types = ['.mov', '.mpg', '.mp4', '.m4v', '.mpeg']
+        self.archive_types = ['.mov', '.mpg', '.mp4', '.m4v', '.mpeg']
         super(VideoArchiver, self).__init__(source, destination, descend)
         return
 
     def archive_file(self, path):
         ftype = splitext(path)[1].lower()
-        if ftype not in self.image_types:
-            logger.info("Skipping non-video type: {0}".format(path))
+        if ftype not in self.archive_types:
+            logger.debug("Skipping non-video type: {0}".format(path))
             return False
         return super(VideoArchiver, self).archive_file(path)
 
