@@ -1,5 +1,9 @@
 """
 Storagemgr Test settings
+
+Tests need to be run with:
+
+$ manage.py test storage --settings=storagemgr.settings_test
 """
 
 from storagemgr.settings import *

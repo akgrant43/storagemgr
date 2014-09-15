@@ -4,7 +4,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from optparse import make_option
 
-from storage.archiver import VideoArchiver, ImageArchiver
+from storage.archiver import VideoArchiver, ImageArchiver, Archiver
 
 from logger import init_logging
 logger = init_logging(__name__)
@@ -35,11 +35,11 @@ class Command(BaseCommand):
             dest='media',
             default=False,
             help="Archive media (images & video)"),
-        make_option('--all',
+        make_option('--files',
             action='store_true',
             dest='allfiles',
             default=False,
-            help="Archive all files - not yet implemented"),
+            help="Archive all files - being implemented"),
         )
 
     def handle(self, *args, **options):
@@ -62,6 +62,12 @@ class Command(BaseCommand):
         if options['videos'] or options['media']:
             dest = settings.IMAGES_ARCHIVE
             archiver = VideoArchiver(args[0], dest)
+            archiver.archive()
+
+        if options['allfiles']:
+            import pdb; pdb.set_trace()
+            dest = args[1]
+            archiver = FileArchiver(args[0], dest)
             archiver.archive()
 
         logger.info("Archive finished")
