@@ -32,6 +32,20 @@ class Hash(models.Model):
             hash.save()
             return hash
 
+    def files(self):
+        """Answer the set of files associated with the receiver
+        Should be able to use hash_set, but it isn't working"""
+        files = File.objects.filter(hash=self)
+        return files
+
+    def all_files(self):
+        """Answer the set of all files associated with the receiver
+        Should be able to use hash_set, but it isn't working"""
+        afq = Q(hash=self) | Q(original_hash=self)
+        files = File.objects.filter(afq)
+        return files
+
+
     def __unicode__(self):
         return self.digest
 

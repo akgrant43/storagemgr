@@ -111,10 +111,14 @@ class Archiver(object):
             # Failed to hash, which means the file is corrupt, skip it
             return False
         # If the file has been previously archived, don't add it now
-        hashes = Hash.objects.filter(digest=digest).count()
-        if hashes > 0:
+        hashes = Hash.objects.filter(digest=digest)
+        if hashes.count() > 0:
             logger.debug("Hash of {0} already exists".format(path))
-        return hashes == 0
+            matching_files = []
+            for h in hashes:
+                matching_files.extend(list(h.all_files()))
+            logger.debug("Matching files: {0}".format(matching_files))
+        return hashes.count() == 0
 
     def avoid_clash(self, filename, relpath):
         """Ensure that the supplied filename doesn't exist in the target
