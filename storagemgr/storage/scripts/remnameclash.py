@@ -112,4 +112,5 @@ def run(*args):
                 raise Exception(msg)
             logger.info("Trashing {0}".format(dup_path))
             move(dup_path, TRASH_DIR)
+            state = STATE_SEARCHING
     logger.info("remnameclash finished")
