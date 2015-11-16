@@ -52,7 +52,7 @@ class ArchiveTests(TestCase):
 
     def test_initial_archive(self):
         """Archive the first test directory and ensure file is added"""
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         archive1 = join(self.test_data, "archive1")
         archiver = Archiver(archive1, self.rootdir)
         archiver.archive()
@@ -95,7 +95,7 @@ class ArchiveTests(TestCase):
         """Check:
         1. Re-archiving the same directory doesn't modify the database.
         """
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         archive1 = join(self.test_data, "archive1")
         archiver = ImageArchiver(archive1, self.rootdir)
         archiver.archive()
@@ -115,7 +115,7 @@ class ArchiveTests(TestCase):
            unique names.
         """
 
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         # Archive image3.png
         archive1 = join(self.test_data, "archive1")
         archiver = ImageArchiver(archive1, self.rootdir)
@@ -135,7 +135,7 @@ class ArchiveTests(TestCase):
         """Check:
         1. The system doesn't overwrite a file with the target name.
         """
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         dest_dir = join(self.rootdir, "2013", "12Dec") 
         makedirs(dest_dir)
         copy2(join(self.test_data, "archive1", "image3.png"),
