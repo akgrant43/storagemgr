@@ -56,8 +56,8 @@ class ArchiveTests(TestCase):
         archive1 = join(self.test_data, "archive1")
         archiver = Archiver(archive1, self.rootdir)
         archiver.archive()
-        # Should have 5 files - 3 text, 2 image, 1 video
-        self.assertEqual(File.objects.count(), 6)
+        # Should have 5 files - 3 text, 1 image, 1 video
+        self.assertEqual(File.objects.count(), 5)
         f3 = File.objects.get(name='File3.txt')
         self.assertEqual(f3.hash.digest,
             '89e8719f26e37bbfaed29026404741ef10014ed304c0fe956a876bcfd49b822f')
@@ -190,13 +190,15 @@ class ImageArchiveTests(TestCase):
 
     def test_initial_archive(self):
         """Archive the first test directory and ensure file is added"""
+        import pdb; pdb.set_trace()
         archive1 = join(self.test_data, "archive1")
         archiver = ImageArchiver(archive1, self.rootdir)
         archiver.archive()
         self.assertEqual(File.objects.count(), 3)
         i3 = File.objects.get(name='IMG-20131214-084900-0.png')
         self.assertEqual(i3.hash.digest,
-            'e60698d93e7b7f6955efce729a8fbab2399cbd13fa7b13ac3c2bdc7ffb419ef4')
+            #'e60698d93e7b7f6955efce729a8fbab2399cbd13fa7b13ac3c2bdc7ffb419ef4')
+            '2c2ddf743172fd763dcb71a17e699481d1eb568cfdb0443a1c7a229f64865983')
         return
 
 
@@ -204,6 +206,7 @@ class ImageArchiveTests(TestCase):
         """Check:
         1. Archiving a deleted file doesn't re-add it to the archive
         """
+        #import pdb; pdb.set_trace()
         # Delete image2, rescan and confirm deleted
         remove(self.image2)
         scanner = QuickScan()
@@ -220,7 +223,9 @@ class ImageArchiveTests(TestCase):
         self.assertEqual(File.objects.count(), 2)
         # The hash of image2 should only have the deleted file
         fhash = Hash.objects.get(
-            digest='245346fa2da665e78e4e36994bb9f0bd654ad8ef4d2f4622fca361280935fd8f')
+            # Old digest on whole file
+            #digest='245346fa2da665e78e4e36994bb9f0bd654ad8ef4d2f4622fca361280935fd8f')
+            digest='26a2ca1108565fb5df7b4a70660c5017334c7c8074c5528492a679859c119121')
         files = File.objects.filter(hash=fhash)
         self.assertEqual(files.count(), 1)
         self.assertIsNotNone(files[0].deleted)

@@ -49,10 +49,12 @@ class StorageTests(TestCase):
 
     def test_initial_scan(self):
         """Confirm that the setUp produced the expected environment"""
+        #import pdb; pdb.set_trace()
         self.assertEqual(File.objects.all().count(), 2)
         i1 = File.objects.get(name='image1.png')
         self.assertEqual(i1.hash.digest,
-                         'a9a008968f02ce2ee596052cb7212734b8be932f0df26d2e5052401b07076bf1')
+                         #'a9a008968f02ce2ee596052cb7212734b8be932f0df26d2e5052401b07076bf1')
+                         '4511e4bd5136a1c1491abfbc2221ffcc37c77f3d1213a41b2d3ea9e87ac6549c')
         return
 
 
