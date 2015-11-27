@@ -3,7 +3,7 @@ numpy
 pyzmq
 pygments
 tornado
-ipython[zmq,notebook,test]
+ipython[notebook]
 mimeparse
 django
 django-extensions
