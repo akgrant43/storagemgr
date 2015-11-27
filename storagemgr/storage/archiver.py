@@ -8,7 +8,6 @@ the file modification date at time of archive.
 """
 
 import shutil
-import hashlib
 import pyexiv2
 from os import walk, makedirs
 from os.path import join, splitext, getmtime, isdir, isfile
@@ -16,6 +15,7 @@ from datetime import datetime
 from hachoir_parser import createParser
 from hachoir_metadata import extractMetadata
 
+from storage.smhash import smhash
 from storage.models import Hash, RootPath, RelPath, File
 
 from logger import init_logging
@@ -91,16 +91,8 @@ class Archiver(object):
 
         # Get the digest of the candidate file
         logger.debug("Get digest for {0}".format(path))
-        hasher = hashlib.sha256()
-        read_size = hasher.block_size * 1024
         try:
-            with open(path, 'rb') as fp:
-                while True:
-                    buf = fp.read(read_size)
-                    if len(buf) == 0:
-                        break  
-                    hasher.update(buf)
-            digest = hasher.hexdigest()
+            digest = smhash(path)
         except IOError as e:
             msg = "Unable to hash {0}, e={1}.  Ignoring.".format(
                 path, e)

@@ -1,11 +1,12 @@
 import os
-import hashlib
 import pyexiv2
 from datetime import datetime
 from os.path import exists, islink, join, splitext
 
 from django.db import models
 from django.db.models import Q
+
+from storage.smhash import smhash
 
 from logger import init_logging
 logger = init_logging(__name__)
@@ -235,15 +236,7 @@ class File(models.Model):
         if self.size == 0:
             digest = "0"
         else:
-            hasher = hashlib.sha256()
-            read_size = hasher.block_size * 1024
-            with open(self.abspath, 'rb') as fp:
-                while True:
-                    buf = fp.read(read_size)
-                    if len(buf) == 0:
-                        break  
-                    hasher.update(buf)
-            digest = hasher.hexdigest()
+            digest = smhash(self.abspath)
         self.hash = Hash.gethash(digest)
         if self.original_hash_id is None:
             self.original_hash = self.hash
