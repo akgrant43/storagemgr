@@ -202,6 +202,15 @@ class File(models.Model):
     def abspath(self):
         return join(self.path.abspath, self.name)
 
+    @property
+    def keywords(self):
+        return self.keyword_set.all()
+
+    @property
+    def keyword_names(self):
+        names = [x.name for x in self.keywords]
+        return names
+
     def os_stats(self):
         """Answer os.stats() for the receiver.
         For a symbolic link we want the stats of the link, not the target."""
@@ -247,44 +256,33 @@ class File(models.Model):
         if self.pk is None:
             # We need to save for the many-to-many relationships
             self.save()
-        self._update_exif()
+        self.file_update_metadata()
         self.save()
 
     def update_exif(self):
-        """Update the receivers EXIF metadata."""
-        assert self.deleted is None, \
-            u"Can't update deleted file: {0}".format(self.abspath)
-
-        # The file must be accessible
-        assert exists(self.abspath), \
-            u"File not accessible: {0}".format(self.abspath)
-
-        self._update_exif()
+        """Update the receivers EXIF metadata and save."""
+        self.file_update_metadata()
         self.save()
 
-    def _update_exif(self):
+    def file_update_metadata(self):
         """Update the receivers EXIF metadata.
         Note that this doesn't save the changes to the receiver."""
         if splitext(self.name)[1].lower() in ['.jpg', '.png']:
-            try:
-                img_exiv2 = pyexiv2.metadata.ImageMetadata(self.abspath)
-                img_exiv2.read()
-            except IOError:
+            assert self.deleted is None, \
+                u"Can't update deleted file: {0}".format(self.abspath)
+            # The file must be accessible
+            assert exists(self.abspath), \
+                u"File not accessible: {0}".format(self.abspath)
+
+            img_exiv2 = self.file_exiv2()
+            if img_exiv2 is None:
                 logger.warn("Unable to read metadata from: {0}".format(self.abspath))
                 return
 
             #
             # Keywords
             #
-            keywords = img_exiv2.get('Iptc.Application2.Keywords')
-            if keywords is not None:
-                keywords = keywords.value
-            else:
-                keywords = []
-            xmp = img_exiv2.get('Xmp.MicrosoftPhoto.LastKeywordXMP')
-            if xmp is not None:
-                keywords.extend(xmp.value)
-            keywords = set(keywords)
+            keywords = self.file_keywords()
             old_keywords = self.keyword_set.all()
             # Minimise db lookups by caching in a dictionary
             oldkwdict = {}
@@ -332,6 +330,29 @@ class File(models.Model):
                     logger.warn("{0} no date: {1}".format(self.abspath, str(ve)))
         return
 
+    def file_keywords(self):
+        """Answer the set of keywords in the receivers file"""
+        keywords = []
+        img_exiv2 = self.file_exiv2()
+        if img_exiv2 is not None:
+            iptc_keywords = img_exiv2.get('Iptc.Application2.Keywords')
+            if iptc_keywords is not None:
+                keywords.extend(iptc_keywords.value)
+            xmp = img_exiv2.get('Xmp.MicrosoftPhoto.LastKeywordXMP')
+            if xmp is not None:
+                keywords.extend(xmp.value)
+            keywords = set(keywords)
+        return keywords
+
+    def file_exiv2(self):
+        "Answer the exiv2 object from the receivers file"
+        try:
+            img_exiv2 = pyexiv2.metadata.ImageMetadata(self.abspath)
+            img_exiv2.read()
+        except IOError:
+            img_exiv2 = None
+        return img_exiv2
+
     def mark_deleted(self):
         """Mark the receiver as deleted"""
         self.deleted = datetime.now()
@@ -342,6 +363,33 @@ class File(models.Model):
         self.symbolic_link = True
         self.deduped = True
         self.save()
+
+    def matching_files(self):
+        """Answer the list of files with the same hash."""
+        # Get the digest of the candidate file
+        logger.debug("Get digest for {0}".format(self))
+        if self.hash is None:
+            try:
+                digest = smhash(self.abspath)
+            except IOError as e:
+                msg = "Unable to hash {0}, e={1}.  Ignoring.".format(
+                    path, e)
+                logger.error(msg)
+                digest = None
+        else:
+            digest = self.hash.digest
+
+        if digest is None:
+            # Failed to hash, which means the file is corrupt, skip it
+            return None
+        hashes = Hash.objects.filter(digest=digest)
+        assert hashes.count() <= 1, "Multiple entries exist for {0}".format(digest)
+        matching_files = []
+        for h in hashes:
+            matching_files.extend(list(h.all_files()))
+        if self in matching_files:
+            matching_files.remove(self)
+        return matching_files
 
     def __unicode__(self):
         return self.abspath

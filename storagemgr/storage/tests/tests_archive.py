@@ -190,7 +190,7 @@ class ImageArchiveTests(TestCase):
 
     def test_initial_archive(self):
         """Archive the first test directory and ensure file is added"""
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         archive1 = join(self.test_data, "archive1")
         archiver = ImageArchiver(archive1, self.rootdir)
         archiver.archive()
@@ -283,6 +283,29 @@ class ImageArchiveTests(TestCase):
         archiver.archive()
         self.assertTrue(isfile(join(dest_dir, "IMG-20131214-084900-0-1.png")),
                         "Didn't find IMG-20131214-084900-0-1.png")
+        return
+
+
+    def test_accumulate_keywords(self):
+        """Check:
+        1. Archiving a duplicate photo with additional tags adds the new
+           tags to the existing photo.
+        """
+        archive1 = join(self.test_data, "archive1")
+        archiver = ImageArchiver(archive1, self.rootdir)
+        archiver.archive()
+        files = File.objects.all()
+        self.assertEqual(files.count(), 3)
+        # Test image3.png has no tags.
+        i3 = File.objects.get(name='IMG-20131214-084900-0.png')
+        self.assertEqual(len(i3.keywords), 0)
+        archive4 = join(self.test_data, "archive4")
+        archiver4 = ImageArchiver(archive4, self.rootdir)
+        archiver4.archive()
+        # Test image3.png has tag1 added.
+        i3 = File.objects.get(name='IMG-20131214-084900-0.png')
+        self.assertEqual(len(i3.keywords), 1)
+        self.assertEqual(i3.keyword_names[0], u'tag1')
         return
 
 

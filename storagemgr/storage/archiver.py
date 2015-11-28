@@ -16,7 +16,7 @@ from hachoir_parser import createParser
 from hachoir_metadata import extractMetadata
 
 from storage.smhash import smhash
-from storage.models import Hash, RootPath, RelPath, File
+from storage.models import Hash, RootPath, RelPath, File, Keyword
 
 from logger import init_logging
 logger = init_logging(__name__)
@@ -45,9 +45,18 @@ class Archiver(object):
 
     def archive_files(self, filenames, root):
         """Archive all the files in the supplied hierarchy"""
+        tmp_root = RootPath(path=root)
+        tmp_path = RelPath(path=root, root=tmp_root)
         for fname in filenames:
             fn = join(root, fname)
-            if self.archive_file(fn):
+            if not self.archive_file(fn):
+                logger.debug("skipped {0}".format(fn))
+                continue
+            tmp_file = File(path=tmp_path, name=fname)
+            tmp_file.get_details()
+            matching = tmp_file.matching_files()
+            if len(matching) == 0:
+                # Add the file to the archive
                 fdate = self.date(fn)
                 newfn = self.new_fn(fn, fdate, fname)
                 dest = join(self.destination,
@@ -69,7 +78,20 @@ class Archiver(object):
                             new_file.name,
                             new_file.hash.digest))
             else:
-                logger.debug("skipped {0}".format(fn))
+                # Merge keywords from the new file
+                keywords = tmp_file.file_keywords()
+                if len(keywords) > 0:
+                    for existing_file in matching:
+                        logger.info("updating {0} from matching file {1}".format(
+                            existing_file, fname))
+                        existing_keywords = existing_file.keyword_set.all()
+                        new_keywords = set(keywords) - set(existing_keywords)
+                        logger.info("Adding keywords {0} to {1}".format(
+                            new_keywords, existing_file))
+                        for kw in new_keywords:
+                            Keyword.get_or_add(kw).files.add(existing_file)
+                else:
+                    logger.info("{0} matches {1}".format(fname, matching))
         return
 
     def date(self, fnpath):
@@ -85,33 +107,12 @@ class Archiver(object):
         return filename
 
     def archive_file(self, path):
-        """Answer a boolean indicating whether the supplied file should 
-        be archived.
-        Don't archive if there is at least one file with the same hash."""
-
-        # Get the digest of the candidate file
-        logger.debug("Get digest for {0}".format(path))
-        try:
-            digest = smhash(path)
-        except IOError as e:
-            msg = "Unable to hash {0}, e={1}.  Ignoring.".format(
-                path, e)
-            logger.error(msg)
-            digest = None
-
-        if digest is None:
-            # Failed to hash, which means the file is corrupt, skip it
-            return False
-        # If the file has been previously archived, don't add it now
-        hashes = Hash.objects.filter(digest=digest)
-        if hashes.count() > 0:
-            logger.debug("Hash of {0} already exists".format(path))
-            matching_files = []
-            for h in hashes:
-                matching_files.extend(list(h.all_files()))
-            logger.debug("Matching files: {0}".format(matching_files))
-        return hashes.count() == 0
-
+        """Answer a boolean indicating whether the supplied file is a 
+        candidate for archiving.
+        By default, all files are archived.  Sub-classes may restrict based on
+        filename, etc."""
+        return True
+        
     def avoid_clash(self, filename, relpath):
         """Ensure that the supplied filename doesn't exist in the target
         directory."""
@@ -139,6 +140,9 @@ class ImageArchiver(Archiver):
         return
 
     def archive_file(self, path):
+        """Answer a boolean indicating whether the supplied file is a 
+        candidate for archiving.
+        Don't archive files that don't have a known image extension."""
         ftype = splitext(path)[1].lower()
         if ftype not in self.image_types:
             logger.debug("Skipping non-image type: {0}".format(path))
@@ -189,6 +193,9 @@ class VideoArchiver(Archiver):
         return
 
     def archive_file(self, path):
+        """Answer a boolean indicating whether the supplied file is a 
+        candidate for archiving.
+        Don't archive files that don't have a known video extension."""
         ftype = splitext(path)[1].lower()
         if ftype not in self.archive_types:
             logger.debug("Skipping non-video type: {0}".format(path))
