@@ -73,7 +73,7 @@ class ArchiveTests(TestCase):
         scanner = QuickScan()
         scanner.scan()
         f2 = File.objects.get(name='File2.txt')
-        self.assertTrue(f2.deleted, "Expected File2.txt to be deleted")
+        self.assertIsNotNone(f2.deleted, "Expected File2.txt to be deleted")
         
         # Archive archive2, which contains a copy of image2,
         # which should not be archived
@@ -291,21 +291,24 @@ class ImageArchiveTests(TestCase):
         1. Archiving a duplicate photo with additional tags adds the new
            tags to the existing photo.
         """
+        #import pdb; pdb.set_trace()
         archive1 = join(self.test_data, "archive1")
         archiver = ImageArchiver(archive1, self.rootdir)
         archiver.archive()
         files = File.objects.all()
         self.assertEqual(files.count(), 3)
-        # Test image3.png has no tags.
+        # Test image3.png has tag3.
         i3 = File.objects.get(name='IMG-20131214-084900-0.png')
-        self.assertEqual(len(i3.keywords), 0)
+        self.assertEqual(len(i3.keywords), 1)
+        self.assertEqual(i3.keyword_names[0], u'tag3')
+        # Archive4 has same image, but with tags tag1 and tag2
         archive4 = join(self.test_data, "archive4")
         archiver4 = ImageArchiver(archive4, self.rootdir)
         archiver4.archive()
-        # Test image3.png has tag1 added.
+        # Test image3.png has tag1 and tag2 have been added.
         i3 = File.objects.get(name='IMG-20131214-084900-0.png')
-        self.assertEqual(len(i3.keywords), 1)
-        self.assertEqual(i3.keyword_names[0], u'tag1')
+        self.assertEqual(len(i3.keywords), 3)
+        self.assertEqual(set(i3.keyword_names), set(['tag1', 'tag2', 'tag3']))
         return
 
 

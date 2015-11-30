@@ -1,5 +1,6 @@
 import os
-import pyexiv2
+from gi.repository import GExiv2
+import gi.repository.GLib
 from datetime import datetime
 from os.path import exists, islink, join, splitext
 
@@ -305,7 +306,7 @@ class File(models.Model):
             if dt is not None:
                 try:
                     # Side affect of adding to FileDate is to convert to datetime
-                    dt, field = FileDate.add(self, 'Exif.Photo.DateTimeDigitized', dt.value)
+                    dt, field = FileDate.add(self, 'Exif.Photo.DateTimeDigitized', dt)
                     self.date = dt
                     self.date_field = field
                 except ValueError as ve:
@@ -314,7 +315,7 @@ class File(models.Model):
             if dt is not None:
                 try:
                     # Side affect of adding to FileDate is to convert to datetime
-                    dt, field = FileDate.add(self, 'Exif.Photo.DateTimeOriginal', dt.value)
+                    dt, field = FileDate.add(self, 'Exif.Photo.DateTimeOriginal', dt)
                     self.date = dt
                     self.date_field = field
                 except ValueError as ve:
@@ -323,33 +324,37 @@ class File(models.Model):
             if dt is not None:
                 try:
                     # Side affect of adding to FileDate is to convert to datetime
-                    dt, field = FileDate.add(self, 'Exif.Image.DateTime', dt.value)
+                    dt, field = FileDate.add(self, 'Exif.Image.DateTime', dt)
                     self.date = dt
                     self.date_field = field
                 except ValueError as ve:
                     logger.warn("{0} no date: {1}".format(self.abspath, str(ve)))
         return
 
-    def file_keywords(self):
+    def file_keywords(self, img_exiv2=None):
         """Answer the set of keywords in the receivers file"""
         keywords = []
-        img_exiv2 = self.file_exiv2()
+        if img_exiv2 is None:
+            img_exiv2 = self.file_exiv2()
         if img_exiv2 is not None:
-            iptc_keywords = img_exiv2.get('Iptc.Application2.Keywords')
-            if iptc_keywords is not None:
-                keywords.extend(iptc_keywords.value)
-            xmp = img_exiv2.get('Xmp.MicrosoftPhoto.LastKeywordXMP')
-            if xmp is not None:
-                keywords.extend(xmp.value)
-            keywords = set(keywords)
+            iptc_keywords = img_exiv2.get_tag_multiple('Iptc.Application2.Keywords')
+            keywords.extend(iptc_keywords)
+            xmp = img_exiv2.get_tag_multiple('Xmp.MicrosoftPhoto.LastKeywordXMP')
+            keywords.extend(xmp)
+        keywords = set(keywords)
         return keywords
 
     def file_exiv2(self):
         "Answer the exiv2 object from the receivers file"
         try:
-            img_exiv2 = pyexiv2.metadata.ImageMetadata(self.abspath)
-            img_exiv2.read()
-        except IOError:
+            img_exiv2 = GExiv2.Metadata(self.abspath)
+        # Catching every exception is really bad, but I can't catch
+        # GLib.Error :-(
+        except Exception as e:
+        #except IOError, GLib.Error:
+            msg = "GExiv2 exception on {0}, ignoring, e={1}".format(
+                    self.abspath, e)
+            logger.warn(msg)
             img_exiv2 = None
         return img_exiv2
 

@@ -8,8 +8,8 @@ the file modification date at time of archive.
 """
 
 import shutil
-import pyexiv2
-from os import walk, makedirs
+from gi.repository import GExiv2
+from os import walk, makedirs, stat
 from os.path import join, splitext, getmtime, isdir, isfile
 from datetime import datetime
 from hachoir_parser import createParser
@@ -45,8 +45,9 @@ class Archiver(object):
 
     def archive_files(self, filenames, root):
         """Archive all the files in the supplied hierarchy"""
+        #import pdb; pdb.set_trace()
         tmp_root = RootPath(path=root)
-        tmp_path = RelPath(path=root, root=tmp_root)
+        tmp_path = RelPath(path='', root=tmp_root)
         for fname in filenames:
             fn = join(root, fname)
             if not self.archive_file(fn):
@@ -71,29 +72,81 @@ class Archiver(object):
                     # This should never happen
                     raise ValueError("destination already exists: {0}".format(
                         new_file))
-                shutil.copy2(fn, new_file.abspath)
+                #shutil.copy2(fn, new_file.abspath)
+                self.copy_file(fn, new_file)
                 new_file.update_details()
                 logger.info("added {0} as {1} ({2})".format(
                             fn,
                             new_file.name,
                             new_file.hash.digest))
             else:
+                logger.info("{0} matches {1}".format(fname, matching))
                 # Merge keywords from the new file
-                keywords = tmp_file.file_keywords()
+                #import pdb; pdb.set_trace()
+                keywords = set(tmp_file.file_keywords())
                 if len(keywords) > 0:
                     for existing_file in matching:
                         logger.info("updating {0} from matching file {1}".format(
                             existing_file, fname))
-                        existing_keywords = existing_file.keyword_set.all()
-                        new_keywords = set(keywords) - set(existing_keywords)
+                        existing_keywords = set(
+                            [x.name for x in existing_file.keyword_set.all()])
+                        new_keywords = keywords - existing_keywords
                         logger.info("Adding keywords {0} to {1}".format(
                             new_keywords, existing_file))
-                        for kw in new_keywords:
-                            Keyword.get_or_add(kw).files.add(existing_file)
-                else:
-                    logger.info("{0} matches {1}".format(fname, matching))
+                        # If there are new keywords, write them to the db and
+                        # back to the file
+                        if len(new_keywords) > 0:
+                            # Write the keywords to the database
+                            for kw in new_keywords:
+                                Keyword.get_or_add(kw).files.add(existing_file)
+                            # Write the keywords to the archived image
+                            all_keywords = list(keywords.union(existing_keywords))
+                            img_exiv2 = existing_file.file_exiv2()
+                            img_exiv2.set_tag_multiple(
+                                'Iptc.Application2.Keywords', list(all_keywords))
+                            img_exiv2.save_file()
         return
 
+    def copy_file(self, from_fn, to_file):
+        """Copy from_fn to the file pointed to by to_file,
+        and validate the results"""
+        from_stats = stat(from_fn)
+        from_size = from_stats.st_size
+        if from_size == 0:
+            # Should never get here
+            msg = "Source file has 0 bytes: {0}".format(from_fn)
+            logger.fatal(msg)
+            import pdb; pdb.set_trace()
+        shutil.copy2(from_fn, to_file.abspath)
+        #
+        # Copy validation since we've seen some 0 length files.
+        #
+        # Confirm file size
+        to_stats = stat(to_file.abspath)
+        to_size = to_stats.st_size
+        if to_size == 0:
+            # Should never get here
+            msg = "Copied file has 0 bytes: {0}".format(to_file.abspath)
+            logger.fatal(msg)
+            import pdb; pdb.set_trace()
+        if to_size != from_size:
+            # Should never get here
+            msg = "Copied file sizes don't match: {0} and {1}".format(
+                from_fn, to_file.abspath)
+            logger.fatal(msg)
+            import pdb; pdb.set_trace()
+        # Get the mtime, we don't care about microsecond differences
+        # as shutil.copy2 doesn't seem to copy microseconds
+        from_mtime = datetime.fromtimestamp(from_stats.st_mtime).replace(microsecond=0)
+        to_mtime = datetime.fromtimestamp(to_stats.st_mtime).replace(microsecond=0)
+        if from_mtime != to_mtime:
+            # Should never get here
+            msg = "Copied file dates don't match: {0} and {1}".format(
+                from_fn, to_file.abspath)
+            logger.fatal(msg)
+            import pdb; pdb.set_trace()
+        return
+        
     def date(self, fnpath):
         """Answer the date for the supplied filename.
         By default, use the modified time."""
@@ -135,7 +188,8 @@ class ImageArchiver(Archiver):
     """Archive image files from the supplied hierarchy"""
 
     def __init__(self, source, destination, descend=True):
-        self.image_types = ['.jpg', '.jpeg', '.tif', '.tiff', '.raw', '.png']
+        self.image_types = ['.jpg', '.jpeg', '.tif', '.tiff', '.raw', '.png',
+            '.crw', '.cr2']
         super(ImageArchiver, self).__init__(source, destination, descend)
         return
 
@@ -154,23 +208,25 @@ class ImageArchiver(Archiver):
         Use the image metadata if available, otherwise the default."""
         fdate = None
         try:
-            metadata = pyexiv2.ImageMetadata(fnpath)
-            metadata.read()
-            if 'Exif.Photo.DateTimeOriginal' in metadata.exif_keys:
-                fdate = metadata['Exif.Photo.DateTimeOriginal'].value
-            elif 'Exif.Image.DateTime' in metadata.exif_keys:
-                fdate = metadata['Exif.Image.DateTime'].value
-            # The image can contain an invalid value, in which case the
-            # date will come back as a string - which we don't know
-            # what to do with, so make None again
-            if not isinstance(fdate, datetime):
-                fdate = None
-        except IOError as e:
-            # If it isn't a recognised format, don't worry...
-            msg = "pyexiv2 exception on {0}, ignoring, e={1}".format(
+            metadata = GExiv2.Metadata(fnpath)
+            if 'Exif.Photo.DateTimeOriginal' in metadata:
+                fdate = metadata['Exif.Photo.DateTimeOriginal']
+            elif 'Exif.Image.DateTime' in metadata:
+                fdate = metadata['Exif.Image.DateTime']
+        #except IOError as e:
+        except Exception as e:
+            msg = "Archiver.date() exception on {0}, ignoring, e={1}".format(
                     fnpath, e)
             logger.warn(msg)
-            pass
+            fdate = None
+        if fdate is not None:
+            if len(fdate) != 19:
+                msg = "Ignoring unrecognised date format: {0}".format(fdate)
+                logger.debug(msg)
+                fdate = None
+                import pdb; pdb.set_trace()
+            else:
+                fdate = datetime.strptime(fdate, "%Y:%m:%d %H:%M:%S")
         if fdate is None:
             fdate = super(ImageArchiver, self).date(fnpath)
         return fdate

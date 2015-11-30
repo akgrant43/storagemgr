@@ -3,6 +3,7 @@ from os.path import isdir
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from optparse import make_option
+from os.path import abspath
 
 from storage.archiver import VideoArchiver, ImageArchiver, Archiver
 
@@ -48,6 +49,8 @@ class Command(BaseCommand):
         if options['debug']:
             import pdb
             pdb.set_trace()
+
+        logger.info("Archiving: {0}".format(abspath(args[0])))
 
         if not isdir(args[0]):
             msg = "Supplied path is not a directory: {0}".format(args[0])
