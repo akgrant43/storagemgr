@@ -8,7 +8,6 @@ mimeparse
 django
 django-extensions
 django-tastypie
-South
 Werkzeug
 pytz
 sphinx
