@@ -12,10 +12,9 @@ from gi.repository import GExiv2
 from os import walk, makedirs, stat
 from os.path import join, splitext, getmtime, isdir, isfile
 from datetime import datetime
-from hachoir_parser import createParser
-from hachoir_metadata import extractMetadata
 
 from storage.smhash import smhash
+from storage.mediainfo import MediaInfo
 from storage.models import Hash, RootPath, RelPath, File, Keyword
 
 from logger import init_logging
@@ -261,23 +260,8 @@ class VideoArchiver(Archiver):
     def date(self, fnpath):
         """Answer the date for the supplied filename.
         Use the video metadata if available, otherwise the default."""
-        fdate = None
-        try:
-            ufnpath = unicode(fnpath, 'utf-8')
-            parser = createParser(ufnpath)
-            if parser is None:
-                raise UnknownFormat("Can't parse {0}".format(fnpath))
-            metadata = extractMetadata(parser, 0.0)
-            fdate = metadata.get('creation_date')
-            if fdate.year < 1972:
-                # It isn't valid
-                fdate = None
-        except (ValueError, IOError, AttributeError, UnknownFormat) as e:
-            # If it isn't a recognised format, don't worry...
-            msg = "hachoir exception on {0}, ignoring, e={1}".format(
-                    fnpath, e)
-            logger.warn(msg)
-            pass
+        mediainfo = MediaInfo(fnpath)
+        fdate = mediainfo.earliest_date()
         if fdate is None:
             fdate = super(VideoArchiver, self).date(fnpath)
         return fdate
