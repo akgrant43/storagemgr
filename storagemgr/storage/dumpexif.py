@@ -2,7 +2,7 @@
 """Dump EXIF data using PIL and pyexiv2 (just for debugging)"""
 
 import sys
-import Image
+from PIL import Image
 from gi.repository import GExiv2
 from PIL.ExifTags import TAGS
 import pyexiv2
@@ -14,8 +14,8 @@ try:
         for k, v in img._getexif().items()
         if k in TAGS
     }
-except AttributeError:
-    exif = {'Error' : 'No attributes found'}
+except Exception as e:
+    exif = {'Error' : 'Unable to parse file: {0}'.format(e)}
 print("PIL:")
 print("====")
 for k, v in exif.items():
