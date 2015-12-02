@@ -15,7 +15,7 @@ from datetime import datetime
 
 from storage.smhash import smhash
 from storage.mediainfo import MediaInfo
-from storage.models import Hash, RootPath, RelPath, File, Keyword
+from storage.models import Hash, RootPath, RelPath, File, Keyword, IMAGE_TYPES
 
 from logger import init_logging
 logger = init_logging(__name__)
@@ -187,8 +187,7 @@ class ImageArchiver(Archiver):
     """Archive image files from the supplied hierarchy"""
 
     def __init__(self, source, destination, descend=True):
-        self.image_types = ['.jpg', '.jpeg', '.tif', '.tiff', '.raw', '.png',
-            '.crw', '.cr2']
+        self.image_types = IMAGE_TYPES
         super(ImageArchiver, self).__init__(source, destination, descend)
         return
 

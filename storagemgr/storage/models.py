@@ -12,6 +12,9 @@ from storage.smhash import smhash
 from logger import init_logging
 logger = init_logging(__name__)
 
+IMAGE_TYPES = ['.jpg', '.jpeg', '.tif', '.tiff', '.raw', '.png', '.crw',
+                '.cr2']
+
 # Create your models here.
 
 class Hash(models.Model):
@@ -268,7 +271,7 @@ class File(models.Model):
     def file_update_metadata(self):
         """Update the receivers EXIF metadata.
         Note that this doesn't save the changes to the receiver."""
-        if splitext(self.name)[1].lower() in ['.jpg', '.png']:
+        if splitext(self.name)[1].lower() in IMAGE_TYPES:
             assert self.deleted is None, \
                 u"Can't update deleted file: {0}".format(self.abspath)
             # The file must be accessible
