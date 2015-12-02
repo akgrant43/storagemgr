@@ -1,5 +1,5 @@
 import hashlib
-import Image
+from PIL import Image
 
 from logger import init_logging
 logger = init_logging(__name__)
