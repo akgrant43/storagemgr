@@ -21,6 +21,11 @@ class Command(BaseCommand):
             dest='debug',
             default=False,
             help='Load pdb and halt on startup'),
+        make_option('--break-on-add',
+            action='store_true',
+            dest='break_on_add',
+            default=False,
+            help='Load pdb and halt before adding files'),
         make_option('--images',
             action='store_true',
             dest='images',
@@ -59,18 +64,18 @@ class Command(BaseCommand):
 
         if options['images'] or options['media']:
             dest = settings.IMAGES_ARCHIVE
-            archiver = ImageArchiver(args[0], dest)
+            archiver = ImageArchiver(args[0], dest, break_on_add=options['break_on_add'])
             archiver.archive()
 
         if options['videos'] or options['media']:
             dest = settings.IMAGES_ARCHIVE
-            archiver = VideoArchiver(args[0], dest)
+            archiver = VideoArchiver(args[0], dest, break_on_add=options['break_on_add'])
             archiver.archive()
 
         if options['allfiles']:
             import pdb; pdb.set_trace()
             dest = args[1]
-            archiver = FileArchiver(args[0], dest)
+            archiver = FileArchiver(args[0], dest, break_on_add=options['break_on_add'])
             archiver.archive()
 
         logger.info("Archive finished")

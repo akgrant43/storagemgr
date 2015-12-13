@@ -27,12 +27,13 @@ class UnknownFormat(Exception):
 class Archiver(object):
     """Archive the supplied directory"""
     
-    def __init__(self, source, destination, descend=True):
+    def __init__(self, source, destination, descend=True, break_on_add=False):
         self.source = source
         self.destination = destination
         self.root_path = RootPath.getrootpath(destination)
         assert self.root_path is not None, "No root for requested destination"
         self.descend = descend
+        self.break_on_add = break_on_add
         return
 
     def archive(self):
@@ -56,6 +57,8 @@ class Archiver(object):
             tmp_file.get_details()
             matching = tmp_file.matching_files()
             if len(matching) == 0:
+                if self.break_on_add:
+                    import pdb; pdb.set_trace()
                 # Add the file to the archive
                 fdate = self.date(fn)
                 newfn = self.new_fn(fn, fdate, fname)
@@ -186,9 +189,9 @@ class Archiver(object):
 class ImageArchiver(Archiver):
     """Archive image files from the supplied hierarchy"""
 
-    def __init__(self, source, destination, descend=True):
+    def __init__(self, source, destination, descend=True, break_on_add=False):
         self.image_types = IMAGE_TYPES
-        super(ImageArchiver, self).__init__(source, destination, descend)
+        super(ImageArchiver, self).__init__(source, destination, descend, break_on_add)
         return
 
     def archive_file(self, path):
@@ -241,9 +244,9 @@ class ImageArchiver(Archiver):
 class VideoArchiver(Archiver):
     """Archive video files from the supplied hierarchy"""
 
-    def __init__(self, source, destination, descend=True):
+    def __init__(self, source, destination, descend=True, break_on_add=False):
         self.archive_types = ['.mov', '.mpg', '.mp4', '.m4v', '.mpeg']
-        super(VideoArchiver, self).__init__(source, destination, descend)
+        super(VideoArchiver, self).__init__(source, destination, descend, break_on_add)
         return
 
     def archive_file(self, path):
