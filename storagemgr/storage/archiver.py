@@ -15,7 +15,8 @@ from datetime import datetime
 
 from storage.smhash import smhash
 from storage.mediainfo import MediaInfo
-from storage.models import Hash, RootPath, RelPath, File, Keyword, IMAGE_TYPES
+from storage.models import Hash, RootPath, RelPath, File, Keyword
+from storage.models import IMAGE_TYPES, VIDEO_TYPES
 
 from logger import init_logging
 logger = init_logging(__name__)
@@ -93,11 +94,11 @@ class Archiver(object):
                         existing_keywords = set(
                             [x.name for x in existing_file.keyword_set.all()])
                         new_keywords = keywords - existing_keywords
-                        logger.info("Adding keywords {0} to {1}".format(
-                            new_keywords, existing_file))
                         # If there are new keywords, write them to the db and
                         # back to the file
                         if len(new_keywords) > 0:
+                            logger.info("Adding keywords {0} to {1}".format(
+                                new_keywords, existing_file))
                             # Write the keywords to the database
                             for kw in new_keywords:
                                 Keyword.get_or_add(kw).files.add(existing_file)
@@ -245,7 +246,7 @@ class VideoArchiver(Archiver):
     """Archive video files from the supplied hierarchy"""
 
     def __init__(self, source, destination, descend=True, break_on_add=False):
-        self.archive_types = ['.mov', '.mpg', '.mp4', '.m4v', '.mpeg']
+        self.archive_types = VIDEO_TYPES
         super(VideoArchiver, self).__init__(source, destination, descend, break_on_add)
         return
 
