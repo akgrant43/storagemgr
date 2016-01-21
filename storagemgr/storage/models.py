@@ -14,6 +14,7 @@ logger = init_logging(__name__)
 
 IMAGE_TYPES = ['.jpg', '.jpeg', '.tif', '.tiff', '.raw', '.png', '.crw',
                 '.cr2']
+VIDEO_TYPES = ['.mov', '.mpg', '.mp4', '.m4v', '.mpeg', '.3gp']
 
 # Create your models here.
 
@@ -294,9 +295,11 @@ class File(models.Model):
                 oldkwdict[okw.name] = okw
             old_keywords = set(oldkwdict.keys())
             removed = old_keywords - keywords
-            logger.debug("Removing keywords from {0}: {1}".format(self.name, removed))
+            if len(removed) > 0:
+                logger.debug("Removing keywords from {0}: {1}".format(self.name, removed))
             added = keywords - old_keywords
-            logger.debug("Adding keywords from {0}: {1}".format(self.name, added))
+            if len(added) > 0:
+                logger.debug("Adding keywords from {0}: {1}".format(self.name, added))
             for kw in removed:
                 self.keyword_set.filter(name=kw)[0].files.remove(self)
             for kw in added:
