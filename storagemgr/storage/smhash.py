@@ -10,7 +10,7 @@ def smhash(fn):
 
     try:
         img = Image.open(fn)
-        img_data = img.tostring()
+        img_data = img.tobytes()
         hasher = hashlib.sha256()
         hasher.update(img_data)
         digest = hasher.hexdigest()
