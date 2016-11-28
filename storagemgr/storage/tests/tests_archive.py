@@ -15,6 +15,7 @@ from storage.archiver import Archiver, ImageArchiver, VideoArchiver
 
 
 class ArchiveTests(TestCase):
+    fixtures = ['initial_data']
 
     def setUp(self):
         # Get tmp directory
@@ -153,6 +154,7 @@ class ArchiveTests(TestCase):
 
 
 class ImageArchiveTests(TestCase):
+    fixtures = ['initial_data']
 
     def setUp(self):
         # Get tmp directory
@@ -314,6 +316,7 @@ class ImageArchiveTests(TestCase):
 
 
 class VideoArchiveTests(TestCase):
+    fixtures = ['initial_data']
 
     def setUp(self):
         # Get tmp directory
@@ -349,6 +352,7 @@ class VideoArchiveTests(TestCase):
 
     def test_initial_archive(self):
         """Archive the first test directory and ensure file is added"""
+        #import pdb; pdb.set_trace()
         archive1 = join(self.test_data, "archive1")
         archiver = VideoArchiver(archive1, self.rootdir)
         archiver.archive()

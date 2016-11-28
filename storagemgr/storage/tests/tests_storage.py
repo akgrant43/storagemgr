@@ -12,6 +12,7 @@ from storage.models import RootPath, File
 from storage.scan import QuickScan
 
 class StorageTests(TestCase):
+    fixtures = ['initial_data']
     
     def setUp(self):
         # Get tmp directory
