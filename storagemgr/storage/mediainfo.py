@@ -112,7 +112,12 @@ class MediaInfo(object):
         dts = set(dts)
         dts = [self.to_datetime(x) for x in dts]
         dts.sort()
-        dt = dts[0]
+        # Filter out default date of 1904-01-01 00:00:00
+        dt = None
+	l = len(dts)-1
+        for i in range(l,-1,-1):
+            if dts[i].year > 1904:
+                dt = dts[i]
         return dt
 
 
