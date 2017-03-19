@@ -15,38 +15,42 @@ logger = init_logging(__name__)
 class Command(BaseCommand):
     args = ''
     help = 'Archive the supplied directory tree'
-    option_list = BaseCommand.option_list + (
-        make_option('--debug',
+
+    def add_arguments(self, parser):
+        parser.add_argument('--debug',
             action='store_true',
             dest='debug',
             default=False,
             help='Load pdb and halt on startup'),
-        make_option('--break-on-add',
+        parser.add_argument('--break-on-add',
             action='store_true',
             dest='break_on_add',
             default=False,
             help='Load pdb and halt before adding files'),
-        make_option('--images',
+        parser.add_argument('--images',
             action='store_true',
             dest='images',
             default=False,
             help="Archive images"),
-        make_option('--videos',
+        parser.add_argument('--videos',
             action='store_true',
             dest='videos',
             default=False,
             help="Archive videos"),
-        make_option('--media',
+        parser.add_argument('--media',
             action='store_true',
             dest='media',
             default=False,
             help="Archive media (images & video)"),
-        make_option('--files',
+        parser.add_argument('--files',
             action='store_true',
             dest='allfiles',
             default=False,
             help="Archive all files - being implemented"),
-        )
+        parser.add_argument('srcdir',
+            help="Archive source directory")
+        parser.add_argument('dstdir', nargs='?',
+            help="Archive source directory")
 
     def handle(self, *args, **options):
 
@@ -55,26 +59,26 @@ class Command(BaseCommand):
             import pdb
             pdb.set_trace()
 
-        logger.info("Archiving: {0}".format(abspath(args[0])))
+        logger.info("Archiving: {0}".format(abspath(options['srcdir'])))
 
-        if not isdir(args[0]):
-            msg = "Supplied path is not a directory: {0}".format(args[0])
+        if not isdir(options['srcdir']):
+            msg = "Supplied path is not a directory: {0}".format(options['srcdir'])
             logger.fatal(msg)
             raise CommandError(msg)
 
         if options['images'] or options['media']:
             dest = settings.IMAGES_ARCHIVE
-            archiver = ImageArchiver(args[0], dest, break_on_add=options['break_on_add'])
+            archiver = ImageArchiver(options['srcdir'], dest, break_on_add=options['break_on_add'])
             archiver.archive()
 
         if options['videos'] or options['media']:
             dest = settings.IMAGES_ARCHIVE
-            archiver = VideoArchiver(args[0], dest, break_on_add=options['break_on_add'])
+            archiver = VideoArchiver(options['srcdir'], dest, break_on_add=options['break_on_add'])
             archiver.archive()
 
         if options['allfiles']:
             import pdb; pdb.set_trace()
-            dest = args[1]
+            dest = options['dstdir']
             archiver = FileArchiver(args[0], dest, break_on_add=options['break_on_add'])
             archiver.archive()
 
