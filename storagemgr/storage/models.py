@@ -1,4 +1,6 @@
 import os
+import gi
+gi.require_version('GExiv2', '0.10')
 from gi.repository import GExiv2
 import gi.repository.GLib
 from datetime import datetime
